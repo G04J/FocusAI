@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FocusAI - Login</title>
+  <link rel="stylesheet" href="../css/global.css?v=2.0">
+  <link rel="stylesheet" href="../css/auth.css?v=2.0">
+</head>
+<body>
+  <div class="auth-container">
+    <div class="auth-card">
+      <!-- Header -->
+      <div class="auth-header">
+        <h1>FocusAI</h1>
+        <p>AI-Powered Focus Enforcement</p>
+      </div>
+
+      <!-- Alert Messages -->
+      <div id="alert" class="alert"></div>
+
+      <!-- Tabs -->
+      <div class="auth-tabs">
+        <button class="auth-tab active" data-tab="login">Login</button>
+        <button class="auth-tab" data-tab="signup">Sign Up</button>
+      </div>
+
+      <!-- Login Form -->
+      <form id="login-form" class="auth-form active">
+        <div class="form-group">
+          <label for="login-username">Username or Email</label>
+          <input 
+            type="text" 
+            id="login-username" 
+            placeholder="Enter username or email"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="login-password">Password</label>
+          <input 
+            type="password" 
+            id="login-password" 
+            placeholder="Enter password"
+            required
+          >
+        </div>
+
+        <button type="submit" class="btn btn-primary form-submit">
+          Login
+          <span class="spinner hidden" id="login-spinner"></span>
+        </button>
+      </form>
+
+      <!-- Signup Form -->
+      <form id="signup-form" class="auth-form">
+        <div class="form-group">
+          <label for="signup-username">Username</label>
+          <input 
+            type="text" 
+            id="signup-username" 
+            placeholder="Choose a username (3-20 characters)"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="signup-email">Email</label>
+          <input 
+            type="email" 
+            id="signup-email" 
+            placeholder="Enter your email"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="signup-password">Password</label>
+          <input 
+            type="password" 
+            id="signup-password" 
+            placeholder="Create a password (min 6 characters)"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="signup-confirm-password">Confirm Password</label>
+          <input 
+            type="password" 
+            id="signup-confirm-password" 
+            placeholder="Confirm your password"
+            required
+          >
+        </div>
+
+        <button type="submit" class="btn btn-primary form-submit">
+          Create Account
+          <span class="spinner hidden" id="signup-spinner"></span>
+        </button>
+      </form>
+
+      <!-- Footer -->
+      <div class="auth-footer">
+        <p>Stay focused. Stay productive. 🎯</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/auth.js"></script>
+</body>
+</html>

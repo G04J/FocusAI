@@ -1,0 +1,24 @@
+{
+  "name": "focusai",
+  "version": "1.0.0",
+  "description": "- An AI based focus and disciplane enforcing app.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "electron": "^39.2.7"
+  },
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "better-sqlite3": "^12.5.0",
+    "electron-store": "^11.0.2",
+    "jsonwebtoken": "^9.0.3",
+    "screenshot-desktop": "^1.15.3"
+  }
+}
