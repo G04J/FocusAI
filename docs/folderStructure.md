@@ -29,8 +29,11 @@ This document describes the folder structure of the FocusAI application.
 - `sessionsList.js` - Sessions list display
 - `sessionActions.js` - Session actions (start/stop/pause/resume)
 - `createSession.js` - Session creation module
-- `editSession.js` - Session editing module
+- `editSession.js` - Session editing module (form initialization)
+- `editSessionReferences.js` - Session reference editing (URLs, files, text)
+- `editSessionSave.js` - Session save functionality
 - `sessionModal.js` - Session modal/view module
+- `theme.js` - Theme management (light/dark mode)
 - `utils.js` - Utility functions (HTML escaping, file icons, alerts)
 
 ### CSS (`frontend/css/`)
@@ -41,6 +44,9 @@ This document describes the folder structure of the FocusAI application.
 
 ### Assets (`frontend/assests/`)
 - Static assets (images, icons, etc.)
+
+### Logos (`frontend/logos/`)
+- Application logos and branding assets
 
 ## Backend (`backend/`)
 
@@ -61,19 +67,32 @@ This document describes the folder structure of the FocusAI application.
 ### Test (`backend/test/`)
 - Test files
 
-- `testAuth.js` - Authentication testing
+### Root Test Files
+- `testAuth.js` - Authentication testing (root level)
 
 ## Data (`data/`)
 - `focusai.db` - SQLite database file
 
 ## Uploads (`uploads/`)
 - User-uploaded files organized by user ID
+- Files stored as `uploads/{userId}/{filename_timestamp.ext}`
 
 ## AI Layer (`aiLayer/`)
 - AI-related functionality (to be implemented)
 
 ## FocusAI (`FocusAI/`)
 - `README.md` - Additional documentation
+
+## Docs (`docs/`)
+- `explain.md` - Detailed explanation of files and modules
+- `folderStructure.md` - This file (folder structure documentation)
+- `plan.md` - Project implementation plan
+- `current.md` - Current project status
+- `choices.md` - Architectural decisions and rationale
+
+## Screenshots (`backend/screenshots/`)
+- Screenshots captured by screenMonitor service
+- Generated automatically when screen capture is used
 
 ---
 

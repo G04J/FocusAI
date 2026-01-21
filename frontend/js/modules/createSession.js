@@ -19,11 +19,29 @@ export function initializeCreateSession() {
   initializeUrlHandling();
   initializeFileHandling();
   initializeReferenceToggles();
+  initializeReferenceCollapse();
   
   const form = document.getElementById('create-session-form');
   if (form) {
     form.addEventListener('submit', handleCreateSession);
     formInitialized = true;
+  }
+}
+
+function initializeReferenceCollapse() {
+  // Use event delegation since sections may be hidden initially
+  const referenceSection = document.querySelector('.reference-section');
+  if (referenceSection) {
+    referenceSection.addEventListener('click', function(e) {
+      const header = e.target.closest('.reference-group-header');
+      if (header) {
+        e.stopPropagation();
+        const section = header.closest('.reference-group');
+        if (section) {
+          section.classList.toggle('collapsed');
+        }
+      }
+    });
   }
 }
 
@@ -171,6 +189,7 @@ function initializeReferenceToggles() {
       } else {
         btn.classList.add('active');
         section.classList.add('active');
+        section.classList.remove('collapsed'); // Ensure section is expanded when shown
         activeReferenceSections.add(type);
       }
     });

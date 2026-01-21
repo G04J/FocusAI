@@ -68,6 +68,9 @@ class SessionRepository {
       } else if (status === 'completed' && timestamp) {
         query = 'UPDATE focus_sessions SET status = ?, ended_at = ? WHERE id = ?';
         params.splice(1, 0, timestamp);
+      } else if (status === 'stopped' && timestamp) {
+        query = 'UPDATE focus_sessions SET status = ?, ended_at = ? WHERE id = ?';
+        params.splice(1, 0, timestamp);
       } else {
         query += ' WHERE id = ?';
       }
@@ -84,12 +87,27 @@ class SessionRepository {
 
   update(sessionId, updates) {
     try {
+      // Whitelist of allowed fields to prevent SQL injection
+      const allowedFields = [
+        'task_name', 'task_description', 'duration_minutes',
+        'reference_type', 'reference_url', 'reference_file_path', 'reference_text',
+        'status', 'started_at', 'ended_at'
+      ];
+
       const fields = [];
       const values = [];
 
       for (const [key, value] of Object.entries(updates)) {
+        // Validate field name to prevent SQL injection
+        if (!allowedFields.includes(key)) {
+          return { success: false, error: `Invalid field: ${key}` };
+        }
         fields.push(`${key} = ?`);
         values.push(value);
+      }
+
+      if (fields.length === 0) {
+        return { success: false, error: 'No valid fields to update' };
       }
 
       values.push(sessionId);
@@ -133,12 +151,21 @@ class SessionRepository {
     const stmt = this.db.prepare(`
       SELECT 
         COUNT(*) as total_sessions,
-        SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_sessions,
-        SUM(CASE WHEN status = 'completed' THEN duration_minutes ELSE 0 END) as total_focus_minutes
+        COALESCE(SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END), 0) as completed_sessions,
+        COALESCE(SUM(CASE WHEN status = 'completed' THEN duration_minutes ELSE 0 END), 0) as total_focus_minutes
       FROM focus_sessions 
       WHERE user_id = ?
     `);
-    return stmt.get(userId);
+    const result = stmt.get(userId);
+    // Ensure we always return an object with numeric values
+    if (!result) {
+      return { total_sessions: 0, completed_sessions: 0, total_focus_minutes: 0 };
+    }
+    return {
+      total_sessions: result.total_sessions || 0,
+      completed_sessions: result.completed_sessions || 0,
+      total_focus_minutes: result.total_focus_minutes || 0
+    };
   }
 
     getActiveOrPausedSession(userId) {

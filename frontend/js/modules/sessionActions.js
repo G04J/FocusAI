@@ -4,6 +4,7 @@ import { showAlert } from './utils.js';
 import { loadStats } from './stats.js';
 import { loadActiveSession } from './activeSession.js';
 import { loadRecentSessions, loadAllSessions } from './sessionsList.js';
+import { navigateToPage } from '../dashboard.js';
 
 export async function startSession(sessionId) {
   try {
@@ -108,34 +109,5 @@ export async function restartSession(sessionId) {
   } catch (error) {
     console.error('Restart session error:', error);
     showAlert('Failed to restart session', 'error');
-  }
-}
-
-/**
- * Helper function to navigate to a page
- * @param {string} page - The page name to navigate to
- */
-function navigateToPage(page) {
-  try {
-    document.querySelectorAll('.nav-item').forEach(item => {
-      item.classList.remove('active');
-      if (item.dataset.page === page) {
-        item.classList.add('active');
-      }
-    });
-    
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    const pageElement = document.getElementById(`page-${page}`);
-    if (pageElement) {
-      pageElement.classList.add('active');
-    }
-    
-    if (page === 'sessions') {
-      const filterBtn = document.querySelector('.filter-btn.active');
-      const filter = filterBtn ? filterBtn.dataset.filter : 'all';
-      loadAllSessions(filter === 'all' ? null : filter);
-    }
-  } catch (error) {
-    console.error('Navigation error:', error);
   }
 }

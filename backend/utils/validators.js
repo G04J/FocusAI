@@ -63,7 +63,7 @@ class Validators {
     }
 
     // Duration validation
-    if (!data.durationMinutes || typeof data.durationMinutes !== 'number') {
+    if (data.durationMinutes === undefined || data.durationMinutes === null || typeof data.durationMinutes !== 'number') {
       errors.push('Duration is required and must be a number');
     } else if (data.durationMinutes < 1 || data.durationMinutes > 480) {
       errors.push('Duration must be between 1 and 480 minutes');

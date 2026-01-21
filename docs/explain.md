@@ -92,15 +92,39 @@ Session creation module:
 
 #### `editSession.js`
 Session editing module:
-- Edit session form
-- Update session references
-- Save edited session data
+- Edit session form initialization
+- Form field management
+- Edit mode entry/exit
+
+#### `editSessionReferences.js`
+Session reference editing module:
+- URL reference management for editing
+- File reference management for editing
+- Text reference handling
+- Reference display and removal
+- Collapsible reference sections
+
+#### `editSessionSave.js`
+Session save functionality:
+- Saves edited session data
+- Handles mixed reference types (URLs + Files + Text)
+- Preserves existing references when updating
+- File upload during edit
+- Session update API calls
 
 #### `sessionModal.js`
 Session view/edit modal:
 - Display session details
 - Reference material display
 - Action buttons (start/stop/edit/delete)
+- Modal open/close handling
+
+#### `theme.js`
+Theme management module:
+- Light/dark theme switching
+- Theme persistence in localStorage
+- Theme toggle button management
+- Settings page theme control
 
 #### `utils.js`
 Utility functions:
@@ -157,8 +181,10 @@ Session management business logic:
 #### `backend/services/screenMonitor.js`
 Screen monitoring service:
 - Captures screenshots using Electron's desktopCapturer
-- Saves screenshots to disk
+- Saves screenshots to disk in `screenshots/` folder
 - Returns screenshot file path
+- Uses primary screen source
+- Generates timestamped screenshot files
 
 ### Utilities
 
@@ -190,6 +216,34 @@ SQLite database file storing:
 - Files should not exceed ~500 lines of code (except when impossible to split further)
 - All functions should include JSDoc comments
 - This documentation should be updated when new files are added
+
+---
+
+## Additional Notes
+
+### Module Organization
+- Frontend modules are organized by functionality (auth, sessions, stats, etc.)
+- Each module has a single responsibility
+- Modules use ES6 import/export for better code organization
+- Utility functions are centralized in `utils.js`
+
+### Database Schema
+- Users table: Stores user accounts with authentication
+- Focus sessions table: Stores session data with flexible reference types
+- User rules table: Prepared for future blocking/allowing functionality
+
+### Security
+- Context isolation enabled in Electron
+- Node integration disabled in renderer
+- Preload script bridges IPC communication securely
+- Passwords hashed with bcrypt
+- JWT tokens for authentication
+
+### File Upload
+- Files stored in `uploads/{userId}/` directory
+- Unique filenames with timestamps
+- 50MB file size limit per file
+- File validation on frontend and backend
 
 ---
 

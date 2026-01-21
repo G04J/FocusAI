@@ -90,15 +90,7 @@ async function handleLogin(e) {
   spinner.classList.remove('hidden');
 
   try {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/cd85e294-0bef-430a-902e-994341727018',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auth.js:78',message:'Login attempt started',data:{username},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     const result = await window.electronAPI.login(username, password);
-
-    // #region agent log
-    console.log('[DEBUG] Login result:', result);
-    fetch('http://127.0.0.1:7242/ingest/cd85e294-0bef-430a-902e-994341727018',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auth.js:83',message:'Login result received',data:{success:result?.success,hasUserId:!!result?.userId,hasUser:!!result?.user,resultKeys:result?Object.keys(result):[],resultStr:JSON.stringify(result)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
 
     spinner.classList.add('hidden');
 
@@ -110,10 +102,6 @@ async function handleLogin(e) {
         username: result.username,
         email: result.email
       }));
-
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/cd85e294-0bef-430a-902e-994341727018',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auth.js:95',message:'Login success - storing auth data',data:{userId:result.userId,username:result.username,email:result.email},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
 
       showAlert('Login successful! Redirecting...', 'success');
 
@@ -170,20 +158,8 @@ async function handleSignup(e) {
   const spinner = document.getElementById('signup-spinner');
   spinner.classList.remove('hidden');
 
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/cd85e294-0bef-430a-902e-994341727018',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auth.js:146',message:'Signup attempt started',data:{username,email,hasRegister:typeof window.electronAPI?.register,hasSignup:typeof window.electronAPI?.signup},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-  // #endregion
-
   try {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/cd85e294-0bef-430a-902e-994341727018',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auth.js:150',message:'Calling signup method',data:{method:'signup'},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     const result = await window.electronAPI.signup(username, email, password);
-
-    // #region agent log
-    console.log('[DEBUG] Signup result:', result);
-    fetch('http://127.0.0.1:7242/ingest/cd85e294-0bef-430a-902e-994341727018',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auth.js:156',message:'Signup result received',data:{success:result?.success,hasError:!!result?.error,error:result?.error,resultKeys:result?Object.keys(result):[],resultStr:JSON.stringify(result)},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
 
     spinner.classList.add('hidden');
 
@@ -204,9 +180,6 @@ async function handleSignup(e) {
     }
   } catch (error) {
     spinner.classList.add('hidden');
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/cd85e294-0bef-430a-902e-994341727018',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auth.js:170',message:'Signup catch block',data:{errorType:error?.constructor?.name,errorMessage:error?.message,errorStack:error?.stack?.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     console.error('Signup error:', error);
     showAlert('Registration failed. Please try again.', 'error');
   }

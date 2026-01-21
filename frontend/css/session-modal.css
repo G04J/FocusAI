@@ -254,11 +254,29 @@
 .reference-input-group {
   display: none;
   animation: fadeIn var(--transition-base);
+  padding: var(--spacing-lg);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+  margin-bottom: var(--spacing-md);
+  background: var(--bg-primary);
 }
 
 .reference-input-group.active,
 .reference-input-group:not(.hidden) {
   display: block;
+}
+
+/* When inside reference-group-content, always show */
+.reference-group-content .reference-input-group {
+  display: block;
+  padding: 0;
+  border: none;
+  background: transparent;
+  margin-bottom: 0;
+}
+
+.reference-input-group.collapsed {
+  padding-bottom: var(--spacing-lg);
 }
 
 @keyframes fadeIn {
@@ -544,6 +562,10 @@
 
 /* ==================== REFERENCE DISPLAY ==================== */
 .reference-display {
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
   background: var(--bg-primary);
   padding: var(--spacing-md);
   border-radius: var(--border-radius-sm);
@@ -567,7 +589,19 @@
   font-size: 14px;
   color: var(--text-primary);
   word-break: break-word;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
   line-height: 1.6;
+}
+
+.reference-display .ref-content a {
+  word-break: break-word;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .reference-display .ref-files {
@@ -575,6 +609,8 @@
   flex-direction: column;
   gap: var(--spacing-sm);
   margin-top: var(--spacing-sm);
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .reference-display .ref-file-item {
@@ -585,6 +621,28 @@
   background: var(--bg-primary);
   border-radius: var(--border-radius-sm);
   font-size: 13px;
+  min-width: 0;
+  overflow: hidden;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.reference-display .ref-file-item span:first-child {
+  flex-shrink: 0;
+}
+
+.reference-display .ref-file-item a,
+.reference-display .ref-file-item span:not(:first-child) {
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  hyphens: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+  max-width: 100%;
 }
 
 .text-muted {
@@ -703,6 +761,10 @@ form.edit-mode .form-group {
   border-radius: var(--border-radius-sm);
   animation: slideIn var(--transition-base);
   font-size: 13px;
+  min-width: 0;
+  overflow: hidden;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .url-item .url-icon {
@@ -712,9 +774,16 @@ form.edit-mode .form-group {
 
 .url-item .url-text {
   flex: 1;
+  min-width: 0;
   font-size: 14px;
   color: var(--text-primary);
   word-break: break-word;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  hyphens: auto;
+  overflow: hidden;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .url-item .url-remove-btn {
@@ -752,6 +821,31 @@ form.edit-mode .form-group {
   margin-top: var(--spacing-md);
 }
 
+/* ==================== EDIT REFERENCE TEXTAREA ==================== */
+#edit-reference-text,
+.reference-group-content textarea {
+  width: 100%;
+  padding: 12px var(--spacing-md);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+  font-size: 14px;
+  transition: all var(--transition-base);
+  font-family: inherit;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+  resize: vertical;
+  min-height: 100px;
+  box-sizing: border-box;
+}
+
+#edit-reference-text:focus,
+.reference-group-content textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15);
+}
+
 /* ==================== REFERENCE GROUPS ==================== */
 .combined-references {
   display: flex;
@@ -765,15 +859,45 @@ form.edit-mode .form-group {
   border-radius: var(--border-radius);
   border: 1px solid var(--border-color);
   transition: all var(--transition-base);
+  margin-bottom: var(--spacing-md);
+  display: none;
 }
 
 .reference-group.active {
+  display: block;
   border-color: var(--primary);
   background: var(--bg-primary);
 }
 
+/* Ensure headers are visible when section is active */
+.reference-group.active .reference-group-header {
+  display: flex;
+}
+
+.reference-group.collapsed {
+  padding-bottom: var(--spacing-lg);
+}
+
 .reference-group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  padding: var(--spacing-md);
+  margin: calc(var(--spacing-md) * -1);
   margin-bottom: var(--spacing-md);
+  border-radius: var(--border-radius);
+  transition: background-color var(--transition-base);
+  user-select: none;
+}
+
+.reference-input-group .reference-group-header {
+  margin: calc(var(--spacing-lg) * -1);
+  margin-bottom: var(--spacing-md);
+}
+
+.reference-group-header:hover {
+  background: var(--bg-tertiary);
 }
 
 .reference-group-header h4 {
@@ -781,6 +905,34 @@ form.edit-mode .form-group {
   font-size: 16px;
   color: var(--text-primary);
   font-weight: 600;
+}
+
+.collapse-icon {
+  font-size: 12px;
+  color: var(--text-secondary);
+  transition: transform var(--transition-base);
+  display: inline-block;
+}
+
+.reference-group.collapsed .collapse-icon {
+  transform: rotate(-90deg);
+}
+
+.reference-group-content {
+  max-height: 2000px;
+  overflow: hidden;
+  transition: max-height 0.3s ease-out, opacity 0.2s ease-out, padding 0.3s ease-out;
+  opacity: 1;
+  padding-top: var(--spacing-sm);
+}
+
+.reference-group.collapsed .reference-group-content {
+  max-height: 0;
+  opacity: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  margin-top: 0;
+  overflow: hidden;
 }
 
 /* ==================== ADD MORE FILES BUTTON ==================== */
