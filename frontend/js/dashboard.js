@@ -92,6 +92,13 @@ function navigateToPage(page) {
  * Sets up all event listeners for the dashboard
  */
 function setupEventListeners() {
+  // Prevent duplicate event listener setup using window flag
+  if (window._dashboardEventListenersSetup) {
+    console.warn('Event listeners already set up, skipping...');
+    return;
+  }
+  window._dashboardEventListenersSetup = true;
+  
   // Navigation
   const navItems = document.querySelectorAll('.nav-item');
   navItems.forEach(item => {
@@ -176,7 +183,11 @@ function setupEventListeners() {
   }
   
   // Session card click to open view modal (delegated)
-  document.addEventListener('click', (e) => {
+  // Remove existing listener if it exists
+  if (window._sessionCardClickHandler) {
+    document.removeEventListener('click', window._sessionCardClickHandler);
+  }
+  window._sessionCardClickHandler = (e) => {
     const clickableArea = e.target.closest('.session-card-clickable-area');
     if (clickableArea) {
       const card = clickableArea.closest('.session-card');
@@ -187,10 +198,15 @@ function setupEventListeners() {
         }
       }
     }
-  });
+  };
+  document.addEventListener('click', window._sessionCardClickHandler);
   
   // Session Actions (delegated)
-  document.addEventListener('click', async (e) => {
+  // Remove existing listener if it exists
+  if (window._sessionActionsClickHandler) {
+    document.removeEventListener('click', window._sessionActionsClickHandler);
+  }
+  window._sessionActionsClickHandler = async (e) => {
     const target = e.target.closest('button');
     if (!target) return;
     
@@ -222,7 +238,7 @@ function setupEventListeners() {
       e.stopPropagation();
       const sessionId = parseInt(target.dataset.sessionId);
       if (sessionId) {
-      await restartSession(sessionId);
+        await restartSession(sessionId);
       }
     } else if (target.classList.contains('btn-delete-session')) {
       e.stopPropagation();
@@ -231,7 +247,8 @@ function setupEventListeners() {
       await deleteSession(sessionId);
       }
     }
-  });
+  };
+  document.addEventListener('click', window._sessionActionsClickHandler);
   
   // Stop session button in active session card
   const stopBtn = document.getElementById('stop-session-btn');

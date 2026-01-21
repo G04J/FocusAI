@@ -43,5 +43,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // File upload
   uploadFile: (fileData) =>
-    ipcRenderer.invoke('upload-file', fileData)
+    ipcRenderer.invoke('upload-file', fileData),
+  
+  // Monitoring
+  startMonitoring: (sessionId) =>
+    ipcRenderer.invoke('monitoring-start', sessionId),
+  stopMonitoring: () =>
+    ipcRenderer.invoke('monitoring-stop'),
+  getMonitoringState: () =>
+    ipcRenderer.invoke('monitoring-get-state'),
+  getMonitoringActivity: (sessionId) =>
+    ipcRenderer.invoke('monitoring-get-activity', sessionId)
 });

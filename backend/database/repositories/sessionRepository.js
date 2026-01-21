@@ -63,7 +63,13 @@ class SessionRepository {
 
       // Update timestamps based on status
       if (status === 'active' && timestamp) {
-        query = 'UPDATE focus_sessions SET status = ?, started_at = ? WHERE id = ?';
+        query = 'UPDATE focus_sessions SET status = ?, started_at = ?, paused_at = NULL WHERE id = ?';
+        params.splice(1, 0, timestamp);
+      } else if (status === 'active') {
+        // Resuming from paused - clear paused_at
+        query = 'UPDATE focus_sessions SET status = ?, paused_at = NULL WHERE id = ?';
+      } else if (status === 'paused' && timestamp) {
+        query = 'UPDATE focus_sessions SET status = ?, paused_at = ? WHERE id = ?';
         params.splice(1, 0, timestamp);
       } else if (status === 'completed' && timestamp) {
         query = 'UPDATE focus_sessions SET status = ?, ended_at = ? WHERE id = ?';
@@ -91,7 +97,7 @@ class SessionRepository {
       const allowedFields = [
         'task_name', 'task_description', 'duration_minutes',
         'reference_type', 'reference_url', 'reference_file_path', 'reference_text',
-        'status', 'started_at', 'ended_at'
+        'status', 'started_at', 'paused_at', 'ended_at'
       ];
 
       const fields = [];

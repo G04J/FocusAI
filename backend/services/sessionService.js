@@ -1,8 +1,10 @@
 const Validators = require('../utils/validators');
 
 class SessionService {
-  constructor(sessionRepository) {
+  constructor(sessionRepository, referenceProcessingService = null, sessionMonitor = null) {
     this.sessionRepo = sessionRepository;
+    this.referenceProcessingService = referenceProcessingService;
+    this.sessionMonitor = sessionMonitor;
   }
 
   createSession(userId, sessionData) {
@@ -31,10 +33,20 @@ class SessionService {
     const result = this.sessionRepo.create(session);
 
     if (result.success) {
+      const createdSession = this.sessionRepo.findById(result.sessionId);
+      
+      // Process references asynchronously (don't block session creation)
+      if (this.referenceProcessingService && createdSession) {
+        this.referenceProcessingService.processSessionReferences(result.sessionId, createdSession)
+          .catch(error => {
+            console.error('Error processing references:', error);
+          });
+      }
+      
       // Return the full session with the ID
       return {
         success: true,
-        session: this.sessionRepo.findById(result.sessionId)
+        session: createdSession
       };
     }
 
@@ -92,6 +104,13 @@ class SessionService {
     const result = this.sessionRepo.updateStatus(sessionId, 'active', now);
 
     if (result.success) {
+      // Start monitoring if available
+      if (this.sessionMonitor) {
+        this.sessionMonitor.start(sessionId).catch(error => {
+          console.error('Error starting monitoring:', error);
+        });
+      }
+      
       return {
         success: true,
         message: 'Session started',
@@ -118,6 +137,11 @@ class SessionService {
     const result = this.sessionRepo.updateStatus(sessionId, 'stopped', now);
 
     if (result.success) {
+      // Stop monitoring if available
+      if (this.sessionMonitor) {
+        this.sessionMonitor.stop();
+      }
+      
       return {
         success: true,
         message: 'Session stopped',
@@ -165,9 +189,16 @@ class SessionService {
       return { success: false, error: 'Session is not active' };
     }
 
-    const result = this.sessionRepo.updateStatus(sessionId, 'paused');
+    // Store the pause timestamp
+    const now = new Date().toISOString();
+    const result = this.sessionRepo.updateStatus(sessionId, 'paused', now);
     
     if (result.success) {
+      // Pause monitoring if available
+      if (this.sessionMonitor) {
+        this.sessionMonitor.pause();
+      }
+      
       return {
         success: true,
         message: 'Session paused',
@@ -198,17 +229,56 @@ class SessionService {
       };
     }
 
-    const result = this.sessionRepo.updateStatus(sessionId, 'active');
-    
-    if (result.success) {
-      return {
-        success: true,
-        message: 'Session resumed',
-        session: this.sessionRepo.findById(sessionId)
-      };
+    // Calculate elapsed time at pause
+    if (session.paused_at && session.started_at) {
+      const startTime = new Date(session.started_at).getTime();
+      const pauseTime = new Date(session.paused_at).getTime();
+      const elapsedAtPause = pauseTime - startTime; // milliseconds
+      
+      // Adjust started_at so timer continues from where it paused
+      // New started_at = current_time - elapsed_at_pause
+      const now = Date.now();
+      const adjustedStartTime = new Date(now - elapsedAtPause).toISOString();
+      
+      // Update status to active and adjust started_at
+      const result = this.sessionRepo.update(sessionId, {
+        status: 'active',
+        started_at: adjustedStartTime,
+        paused_at: null
+      });
+      
+      if (result.success) {
+        // Resume monitoring if available
+        if (this.sessionMonitor) {
+          this.sessionMonitor.resume();
+        }
+        
+        return {
+          success: true,
+          message: 'Session resumed',
+          session: this.sessionRepo.findById(sessionId)
+        };
+      }
+      
+      return result;
+    } else {
+      // Fallback if paused_at is missing (shouldn't happen, but handle gracefully)
+      const result = this.sessionRepo.updateStatus(sessionId, 'active');
+      
+      if (result.success) {
+        if (this.sessionMonitor) {
+          this.sessionMonitor.resume();
+        }
+        
+        return {
+          success: true,
+          message: 'Session resumed',
+          session: this.sessionRepo.findById(sessionId)
+        };
+      }
+      
+      return result;
     }
-
-    return result;
   }
   
   deleteSession(sessionId) {

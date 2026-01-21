@@ -54,7 +54,7 @@ function showActiveSession(session) {
     pauseBtn.textContent = 'Resume';
     pauseBtn.onclick = () => resumeSession(session.id);
     stopSessionTimer();
-    updateTimerDisplay(session.started_at, session.duration_minutes, true);
+    updateTimerDisplay(session.started_at, session.duration_minutes, true, session.paused_at);
   }
 }
 
@@ -75,11 +75,12 @@ function startSessionTimer(startedAt, durationMinutes) {
   timerInterval = setInterval(updateTimer, 1000);
 }
 
-function updateTimerDisplay(startedAt, durationMinutes, isPaused) {
+function updateTimerDisplay(startedAt, durationMinutes, isPaused, pausedAt = null) {
   const startTime = new Date(startedAt).getTime();
-  const now = Date.now();
+  // For paused sessions, use pausedAt instead of current time
+  const endTime = (isPaused && pausedAt) ? new Date(pausedAt).getTime() : Date.now();
   
-  const elapsed = Math.floor((now - startTime) / 1000);
+  const elapsed = Math.floor((endTime - startTime) / 1000);
   const elapsedHours = Math.floor(elapsed / 3600);
   const elapsedMinutes = Math.floor((elapsed % 3600) / 60);
   const elapsedSeconds = elapsed % 60;

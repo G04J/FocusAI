@@ -11,12 +11,35 @@ const SessionRepository = require('./backend/database/repositories/sessionReposi
 const AuthService = require('./backend/services/authService');
 const SessionService = require('./backend/services/sessionService');
 
+// Import monitoring services
+const ReferenceRepository = require('./backend/database/repositories/referenceRepository');
+const SessionRulesRepository = require('./backend/database/repositories/sessionRulesRepository');
+const ActivityRepository = require('./backend/database/repositories/activityRepository');
+const SessionStatisticsRepository = require('./backend/database/repositories/sessionStatisticsRepository');
+
+const ReferenceProcessingService = require('./backend/services/referenceProcessingService');
+const SessionRulesService = require('./backend/services/sessionRulesService');
+const TaskContextService = require('./backend/services/taskContextService');
+const WindowMonitor = require('./backend/services/windowMonitor');
+const MonitoringStateMachine = require('./backend/services/monitoringStateMachine');
+const ScreenMonitor = require('./backend/services/screenMonitor').ScreenMonitor;
+const TileHashService = require('./backend/services/tileHashService');
+const OCRService = require('./backend/services/ocrService');
+const RuleService = require('./backend/services/ruleService');
+const AIClassificationService = require('./backend/services/aiClassificationService');
+const DistractionDetector = require('./backend/services/distractionDetector');
+const OverlayService = require('./backend/services/overlayService');
+const SessionMonitor = require('./backend/services/sessionMonitor');
+const OllamaManager = require('./backend/services/ollamaManager');
+
 let mainWindow;
 let database;
 let userRepository;
 let sessionRepository;
 let authService;
 let sessionService;
+let sessionMonitor;
+let ollamaManager;
 
 function createWindow() {
   // In your BrowserWindow creation
@@ -37,7 +60,7 @@ function createWindow() {
   mainWindow.webContents.openDevTools();
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   createWindow();
   
   // Initialize backend services
@@ -49,10 +72,86 @@ app.whenReady().then(() => {
   sessionRepository = new SessionRepository(db);
   
   authService = new AuthService(userRepository);
-  sessionService = new SessionService(sessionRepository);
+  
+  // Initialize repositories
+  const referenceRepository = new ReferenceRepository(db);
+  const sessionRulesRepository = new SessionRulesRepository(db);
+  const activityRepository = new ActivityRepository(db);
+  const statisticsRepository = new SessionStatisticsRepository(db);
+  
+  // Initialize services
+  const referenceProcessingService = new ReferenceProcessingService(referenceRepository);
+  const sessionRulesService = new SessionRulesService(sessionRulesRepository);
+  const taskContextService = new TaskContextService(referenceRepository, sessionRepository);
+  
+  // Initialize Ollama Manager (automatic setup)
+  console.log('Initializing Ollama Manager...');
+  ollamaManager = new OllamaManager({
+    model: 'llama3.2:1b',
+    baseURL: 'http://localhost:11434'
+  });
+  
+  // Initialize Ollama in background (don't block app startup)
+  ollamaManager.initialize().catch(error => {
+    console.warn('Ollama initialization warning:', error.message);
+    console.log('App will continue with fallback AI mode');
+  });
+  
+  // Initialize monitoring services
+  const windowMonitor = new WindowMonitor();
+  const stateMachine = new MonitoringStateMachine();
+  const screenMonitor = new ScreenMonitor(stateMachine);
+  const tileHashService = new TileHashService();
+  const ocrService = new OCRService();
+  const ruleService = new RuleService();
+  
+  // Configure AI service with Ollama
+  const aiService = new AIClassificationService({
+    provider: 'ollama',
+    model: 'llama3.2:1b',
+    baseURL: 'http://localhost:11434'
+  });
+  
+  // Alternative: Use OpenAI if you prefer (requires API key)
+  // const aiService = new AIClassificationService({
+  //   provider: 'openai',
+  //   model: 'gpt-4o-mini',
+  //   apiKey: process.env.OPENAI_API_KEY
+  // });
+  
+  const distractionDetector = new DistractionDetector(
+    sessionRulesService,
+    ruleService,
+    ocrService,
+    aiService,
+    taskContextService
+  );
+  
+  const overlayService = new OverlayService();
+  
+  // Create session monitor
+  sessionMonitor = new SessionMonitor(
+    windowMonitor,
+    screenMonitor,
+    tileHashService,
+    ocrService,
+    distractionDetector,
+    overlayService,
+    stateMachine,
+    activityRepository,
+    statisticsRepository
+  );
+  
+  // Update session service with monitoring
+  sessionService = new SessionService(
+    sessionRepository,
+    referenceProcessingService,
+    sessionMonitor
+  );
   
   console.log('✓ FocusAI ready');
   console.log('✓ All services initialized');
+  console.log('✓ Ollama Manager: Automatic setup enabled');
 });
 
 // ==================== Auth IPC Handlers ====================
@@ -297,10 +396,90 @@ ipcMain.handle('session-complete', async (event, sessionId) => {
   }
 });
 
-app.on('window-all-closed', () => {
+// ==================== Monitoring IPC Handlers ====================
+ipcMain.handle('monitoring-start', async (event, sessionId) => {
+  console.log('IPC: monitoring-start called', { sessionId });
+  try {
+    if (!sessionMonitor) {
+      return { success: false, error: 'Monitoring service not initialized' };
+    }
+    await sessionMonitor.start(sessionId);
+    return { success: true, message: 'Monitoring started' };
+  } catch (error) {
+    console.error('IPC: monitoring-start error', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('monitoring-stop', async (event) => {
+  console.log('IPC: monitoring-stop called');
+  try {
+    if (!sessionMonitor) {
+      return { success: false, error: 'Monitoring service not initialized' };
+    }
+    sessionMonitor.stop();
+    return { success: true, message: 'Monitoring stopped' };
+  } catch (error) {
+    console.error('IPC: monitoring-stop error', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('monitoring-get-state', async (event) => {
+  try {
+    if (!sessionMonitor) {
+      return { success: false, error: 'Monitoring service not initialized' };
+    }
+    const state = sessionMonitor.getState();
+    return { success: true, state: state };
+  } catch (error) {
+    console.error('IPC: monitoring-get-state error', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('monitoring-get-activity', async (event, sessionId) => {
+  try {
+    if (!sessionMonitor) {
+      return { success: false, error: 'Monitoring service not initialized' };
+    }
+    const activity = sessionMonitor.getActivity(sessionId);
+    return { success: true, activity: activity };
+  } catch (error) {
+    console.error('IPC: monitoring-get-activity error', error);
+    return { success: false, error: error.message };
+  }
+});
+
+app.on('window-all-closed', async () => {
+  // Pause any active sessions before closing
+  if (sessionService && sessionRepository) {
+    try {
+      // Find all active sessions and pause them
+      const allSessions = sessionRepository.db.prepare('SELECT * FROM focus_sessions WHERE status = ?').all('active');
+      
+      for (const session of allSessions) {
+        await sessionService.pauseSession(session.id);
+      }
+    } catch (error) {
+      console.error('Error pausing sessions on app close:', error);
+    }
+  }
+  
+  // Stop Ollama if we started it
+  if (ollamaManager) {
+    ollamaManager.stop();
+  }
+  
+  // Stop monitoring if active
+  if (sessionMonitor) {
+    sessionMonitor.stop();
+  }
+  
   if (database) {
     database.close();
   }
+  
   if (process.platform !== 'darwin') {
     app.quit();
   }

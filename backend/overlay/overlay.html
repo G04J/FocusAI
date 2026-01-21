@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 100vw;
+      height: 100vh;
+      background: transparent;
+      overflow: hidden;
+    }
+
+    .zone {
+      position: absolute;
+      background: rgba(0, 0, 0, 0.7);
+      border: 2px solid rgba(255, 0, 0, 0.5);
+      pointer-events: auto;
+      transition: opacity 0.1s ease-in-out;
+    }
+
+    .zone-label {
+      position: absolute;
+      top: 5px;
+      left: 5px;
+      color: rgba(255, 255, 255, 0.8);
+      font-size: 12px;
+      font-family: Arial, sans-serif;
+      background: rgba(0, 0, 0, 0.5);
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body>
+  <div id="zones-container"></div>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+
+    const zonesContainer = document.getElementById('zones-container');
+
+    // Update zones when received from main process
+    ipcRenderer.on('update-zones', (event, zones) => {
+      updateZones(zones);
+    });
+
+    function updateZones(zones) {
+      // Clear existing zones
+      zonesContainer.innerHTML = '';
+
+      // Create zone elements
+      zones.forEach((zone, index) => {
+        const zoneElement = document.createElement('div');
+        zoneElement.className = 'zone';
+        zoneElement.style.left = `${zone.x}px`;
+        zoneElement.style.top = `${zone.y}px`;
+        zoneElement.style.width = `${zone.w}px`;
+        zoneElement.style.height = `${zone.h}px`;
+
+        // Add label if reason provided
+        if (zone.reason) {
+          const label = document.createElement('div');
+          label.className = 'zone-label';
+          label.textContent = zone.reason;
+          zoneElement.appendChild(label);
+        }
+
+        zonesContainer.appendChild(zoneElement);
+      });
+    }
+
+    // Handle click events on zones (block clicks)
+    zonesContainer.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      return false;
+    });
+
+    zonesContainer.addEventListener('mousedown', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      return false;
+    });
+
+    zonesContainer.addEventListener('mouseup', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      return false;
+    });
+  </script>
+</body>
+</html>

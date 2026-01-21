@@ -92,7 +92,7 @@ export async function restartSession(sessionId) {
   
   try {
     const result = await window.electronAPI.restartSession(sessionId);
-    
+
     if (result.success) {
       showAlert('Session restarted!', 'success');
       await loadActiveSession();

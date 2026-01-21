@@ -4,62 +4,62 @@ overview: ""
 todos:
   - id: install-deps
     content: "Install dependencies: get-windows, xxhash, tesseract.js, pdf-parse, cheerio via npm"
-    status: in_progress
+    status: completed
   - id: window-monitor
     content: Create windowMonitor.js service with get-windows integration for active app/window detection
-    status: pending
+    status: completed
     dependencies:
       - install-deps
   - id: state-machine
     content: Create monitoringStateMachine.js with GREEN/YELLOW/AMBIGUOUS/RED states and transition logic
-    status: pending
+    status: completed
   - id: enhance-screenshot
     content: Enhance screenMonitor.js with adaptive frequency (25s/10s/5s/2.5s) and downscaling
-    status: pending
+    status: completed
     dependencies:
       - state-machine
   - id: tile-hashing
     content: Create tileHashService.js with xxhash for 50x50 tile change detection
-    status: pending
+    status: completed
     dependencies:
       - install-deps
       - enhance-screenshot
   - id: macos-ocr
     content: Create macos_ocr.py Python script using Apple Vision framework via PyObjC
-    status: pending
+    status: completed
   - id: ocr-service
     content: Create ocrService.js with hybrid approach (Apple Vision on macOS, Tesseract.js fallback)
-    status: pending
+    status: completed
     dependencies:
       - macos-ocr
   - id: reference-processing
     content: Create referenceProcessingService.js to extract text from PDFs, fetch/parse URLs, and process text references for AI context
-    status: pending
+    status: completed
   - id: reference-storage
     content: Add processed reference content storage (new table or session metadata field) to connection.js
-    status: pending
+    status: completed
     dependencies:
       - reference-processing
   - id: task-context-service
     content: Create taskContextService.js to load and provide processed task context (references + task details) for AI
-    status: pending
+    status: completed
     dependencies:
       - reference-storage
   - id: rule-service
     content: Create ruleService.js for optional safety net blocklist (obvious distractions only)
-    status: pending
+    status: completed
   - id: ai-setup
     content: Set up AI classification (Ollama local or OpenAI API) for distraction detection
-    status: pending
+    status: completed
   - id: ai-service
     content: Create aiClassificationService.js to classify content as distraction using LLM with task context from processed references
-    status: pending
+    status: completed
     dependencies:
       - ai-setup
       - task-context-service
   - id: distraction-detector
     content: Create distractionDetector.js orchestrating 4-tier decision (always-blocked → always-allowed → safety net → AI with task context)
-    status: pending
+    status: completed
     dependencies:
       - session-rules-service
       - rule-service
@@ -68,25 +68,25 @@ todos:
       - task-context-service
   - id: overlay-service
     content: Create overlayService.js for Electron transparent window with zone-based blocking
-    status: pending
+    status: completed
     dependencies:
       - window-monitor
   - id: database-schema
     content: Add session_activities and session_statistics tables to connection.js
-    status: pending
+    status: completed
   - id: activity-repo
     content: Create activityRepository.js for logging monitoring events and state transitions
-    status: pending
+    status: completed
     dependencies:
       - database-schema
   - id: statistics-repo
     content: Create sessionStatisticsRepository.js for incremental session statistics updates
-    status: pending
+    status: completed
     dependencies:
       - database-schema
   - id: session-monitor
     content: Create sessionMonitor.js orchestrator coordinating all monitoring services
-    status: pending
+    status: completed
     dependencies:
       - window-monitor
       - tile-hashing
@@ -95,18 +95,18 @@ todos:
       - activity-repo
   - id: session-integration
     content: Integrate monitoring into sessionService.js (process references on create, start/stop/pause/resume hooks)
-    status: pending
+    status: completed
     dependencies:
       - session-monitor
       - reference-processing
   - id: ipc-handlers
     content: Add monitoring IPC handlers to main.js (start, stop, get-state, get-activity)
-    status: pending
+    status: completed
     dependencies:
       - session-integration
   - id: preload-api
     content: Expose monitoring APIs in preload.js for frontend access
-    status: pending
+    status: completed
     dependencies:
       - ipc-handlers
   - id: testing-optimization
