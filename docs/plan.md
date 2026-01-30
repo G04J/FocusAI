@@ -21,7 +21,7 @@ The application consists of three main parts:
 - Real-time timer and progress indicators
 - Session modal for viewing/editing sessions
 
-### 2. AI Logic (To be implemented)
+### 2. AI Logic
 - Screen analysis using AI/ML models
 - Distraction detection
 - Real-time blocking mechanisms
@@ -74,27 +74,27 @@ The application consists of three main parts:
 
 ### Phase 5: Screen Monitoring 🔄 IN PROGRESS
 - [x] Basic screen capture functionality
-- [ ] Continuous screen monitoring during active sessions
-- [ ] Screenshot storage and management
-- [ ] Screen change detection (hash comparison)
-- [ ] Screenshot downscaling for performance
+- [x] Continuous screen monitoring during active sessions
+- [ ] Screenshot storage and management (persistent, per-session)
+- [x] Screen change detection (hash comparison via tile hashing)
+- [x] Screenshot downscaling for performance
 
-### Phase 6: AI Analysis ⏳ PLANNED
-- [ ] OCR integration for text extraction
+### Phase 6: AI Analysis 🔄 IN PROGRESS
+- [x] OCR integration for text extraction
 - [ ] Image classification for content analysis
-- [ ] Quick scan implementation (fast, less thorough)
-- [ ] Detailed analysis for flagged content
+- [x] Quick scan implementation (fast, less thorough)
+- [x] Detailed analysis for flagged content
 - [ ] Grid-based screen analysis
-- [ ] Distraction detection algorithms
-- [ ] Content relevance scoring
+- [x] Distraction detection algorithms
+- [x] Content relevance scoring
 
-### Phase 7: Blocking Mechanisms ⏳ PLANNED
-- [ ] Overlay system for blocking distractions
+### Phase 7: Blocking Mechanisms 🔄 IN PROGRESS
+- [x] Overlay system for blocking distractions
 - [ ] Grid-based blocking (blur specific zones)
-- [ ] Application/window detection
-- [ ] URL/domain blocking
+- [x] Application/window detection
+- [x] URL/domain blocking
 - [ ] Warning system before blocking
-- [ ] User rules for always-blocked/allowed content
+- [x] User rules for always-blocked/allowed content
 
 ### Phase 8: Reporting & Analytics ⏳ PLANNED
 - [ ] Session activity reports
@@ -116,14 +116,14 @@ The application consists of three main parts:
 8. ✅ Start Session Flow (basic implementation)
 
 ### Next Steps:
-1. Integrate screen monitoring into active sessions
-2. Implement continuous screenshot capture
-3. Add screenshot analysis pipeline
-4. Implement OCR for text extraction
-5. Add image classification
-6. Build blocking overlay system
-7. Implement grid-based analysis
-8. Add user rules system
+1. Implement screenshot storage and lifecycle management (per-session, with cleanup).
+2. Integrate tile-based hash comparison into the analysis pipeline to skip unchanged regions and enable grid-based analysis.
+3. Add image classification for non-text visual content (e.g., thumbnails, videos, images).
+4. Enhance the overlay to support true grid-based, zone-level blocking and improved visuals (e.g., blur).
+5. Add a warning/confirmation flow before applying full blocking, with per-session overrides.
+6. Build reporting & analytics views powered by `session_statistics` (activity reports, distraction frequency, focus time).
+7. Expose a frontend UI for managing per-session user rules (always-allowed/always-blocked apps and domains).
+8. Harden validation around file uploads and user input (size/type checks, sanitization) across the app.
 
 ## Performance Considerations
 
@@ -156,4 +156,4 @@ The application consists of three main parts:
 
 ---
 
-*Last updated: 2024-12-26*
+*Last updated: 2026-01-27*

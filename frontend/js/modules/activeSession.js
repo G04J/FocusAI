@@ -7,6 +7,10 @@ import { loadStats } from './stats.js';
 
 export let currentActiveSessionId = null;
 let timerInterval = null;
+let lastElapsedDisplay = null;
+let lastRemainingDisplay = null;
+let lastProgress = null;
+let currentTimerParams = null; // Track current timer parameters to avoid restarting unnecessarily
 
 export async function loadActiveSession() {
   try {
@@ -47,13 +51,19 @@ function showActiveSession(session) {
     statusLive.classList.remove('paused');
     pauseBtn.textContent = 'Pause';
     pauseBtn.onclick = () => pauseSession(session.id);
+    // Only start timer if not already running for this session
     startSessionTimer(session.started_at, session.duration_minutes);
   } else if (session.status === 'paused') {
     statusLive.textContent = 'PAUSED';
     statusLive.classList.add('paused');
     pauseBtn.textContent = 'Resume';
     pauseBtn.onclick = () => resumeSession(session.id);
+    // Always stop timer for paused sessions
     stopSessionTimer();
+    // Reset display values to force update
+    lastElapsedDisplay = null;
+    lastRemainingDisplay = null;
+    lastProgress = null;
     updateTimerDisplay(session.started_at, session.duration_minutes, true, session.paused_at);
   }
 }
@@ -67,9 +77,26 @@ function hideActiveSession() {
 }
 
 function startSessionTimer(startedAt, durationMinutes) {
+  // Always stop existing timer first to prevent multiple intervals
+  stopSessionTimer();
+  
+  // Check if we're already running a timer with the same parameters
+  const newParams = `${startedAt}-${durationMinutes}`;
+  if (currentTimerParams === newParams && timerInterval) {
+    // Timer already running with same params, don't restart
+    return;
+  }
+  
+  currentTimerParams = newParams;
+  
   function updateTimer() {
     updateTimerDisplay(startedAt, durationMinutes, false);
   }
+  
+  // Reset last displayed values to force initial update
+  lastElapsedDisplay = null;
+  lastRemainingDisplay = null;
+  lastProgress = null;
   
   updateTimer();
   timerInterval = setInterval(updateTimer, 1000);
@@ -94,11 +121,27 @@ function updateTimerDisplay(startedAt, durationMinutes, isPaused, pausedAt = nul
   const elapsedDisplay = `${String(elapsedHours).padStart(2, '0')}:${String(elapsedMinutes).padStart(2, '0')}:${String(elapsedSeconds).padStart(2, '0')}`;
   const remainingDisplay = `${String(remainingHours).padStart(2, '0')}:${String(remainingMinutes).padStart(2, '0')}:${String(remainingSecs).padStart(2, '0')}`;
   
-  document.getElementById('session-elapsed').textContent = elapsedDisplay;
-  document.getElementById('session-remaining').textContent = remainingDisplay;
-  
   const progress = Math.min(100, (elapsed / totalSeconds) * 100);
-  document.getElementById('session-progress').style.width = progress + '%';
+  
+  // Only update DOM if values have changed to prevent flickering
+  const elapsedEl = document.getElementById('session-elapsed');
+  const remainingEl = document.getElementById('session-remaining');
+  const progressEl = document.getElementById('session-progress');
+  
+  if (elapsedEl && elapsedDisplay !== lastElapsedDisplay) {
+    elapsedEl.textContent = elapsedDisplay;
+    lastElapsedDisplay = elapsedDisplay;
+  }
+  
+  if (remainingEl && remainingDisplay !== lastRemainingDisplay) {
+    remainingEl.textContent = remainingDisplay;
+    lastRemainingDisplay = remainingDisplay;
+  }
+  
+  if (progressEl && progress !== lastProgress) {
+    progressEl.style.width = progress + '%';
+    lastProgress = progress;
+  }
   
   if (!isPaused && remainingSeconds === 0 && timerInterval) {
     handleSessionComplete();
@@ -110,6 +153,11 @@ function stopSessionTimer() {
     clearInterval(timerInterval);
     timerInterval = null;
   }
+  currentTimerParams = null;
+  // Reset last displayed values
+  lastElapsedDisplay = null;
+  lastRemainingDisplay = null;
+  lastProgress = null;
 }
 
 async function handleSessionComplete() {

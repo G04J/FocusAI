@@ -52,18 +52,29 @@ class DistractionDetector {
       const isBrowser = this.isBrowserApp(appName);
       if (isBrowser && screenshotBuffer) {
         try {
+          console.log(`[DistractionDetector] 🔍 Browser detected (${appName}), extracting screen information via OCR...`);
+          
           // OCR URL bar
           ocrResult = await this.ocrService.ocrUrlBar(screenshotBuffer, this.getBrowserType(appName));
           ocrText = ocrResult.text || '';
+          
+          console.log(`[DistractionDetector] 📄 OCR extraction complete:`);
+          console.log(`[DistractionDetector]   Raw OCR text: "${ocrText}"`);
           
           // Extract domain
           const domainResult = this.ocrService.extractDomain(ocrText);
           detectedDomain = domainResult.domain;
           detectedUrl = domainResult.url;
+          
+          console.log(`[DistractionDetector] 🌐 Domain extraction result:`);
+          console.log(`[DistractionDetector]   Domain: ${detectedDomain || 'N/A'}`);
+          console.log(`[DistractionDetector]   URL: ${detectedUrl || 'N/A'}`);
         } catch (error) {
-          console.warn('OCR failed, using app name only:', error.message);
+          console.warn('[DistractionDetector] ⚠️ OCR failed, using app name only:', error.message);
           // Fallback to app name
         }
+      } else {
+        console.log(`[DistractionDetector] ℹ️ Not a browser (${appName}), skipping OCR extraction`);
       }
 
       // Tier 1: Check always-blocked list (fast, explicit block)
@@ -137,10 +148,24 @@ class DistractionDetector {
           ocrText: ocrText
         };
 
+        console.log(`[DistractionDetector] 🤖 Calling AI classification (Tier 4)...`);
+        console.log(`[DistractionDetector]   Content to classify:`);
+        console.log(`[DistractionDetector]     - Domain: ${detectedDomain || 'N/A'}`);
+        console.log(`[DistractionDetector]     - URL: ${detectedUrl || 'N/A'}`);
+        console.log(`[DistractionDetector]     - Window Title: ${windowInfo.windowTitle || 'N/A'}`);
+        console.log(`[DistractionDetector]     - OCR Text length: ${ocrText.length} chars`);
+        console.log(`[DistractionDetector]   Task: "${taskContext.taskName}"`);
+
         const aiResult = await this.aiService.classifyContent(detectedContent, taskContext);
 
         // Default to DISTRACTION if confidence < 0.7
         const isDistraction = aiResult.isDistraction && aiResult.confidence >= 0.7;
+
+        console.log(`[DistractionDetector] ✅ AI classification result:`);
+        console.log(`[DistractionDetector]     - Is Distraction: ${isDistraction} (raw: ${aiResult.isDistraction}, confidence threshold: ${aiResult.confidence >= 0.7})`);
+        console.log(`[DistractionDetector]     - Confidence: ${aiResult.confidence.toFixed(2)}`);
+        console.log(`[DistractionDetector]     - Reason: "${aiResult.reason}"`);
+        console.log(`[DistractionDetector]     - Final Decision: ${isDistraction ? '🚫 BLOCK' : '✅ ALLOW'}`);
 
         return {
           isDistraction: isDistraction,

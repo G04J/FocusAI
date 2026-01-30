@@ -11,7 +11,8 @@ class TileHashService {
     this.hashMap = new Map(); // Map<tileId, hash>
     this.maxStorage = 100; // Max 100 screenshots worth
     this.xxhashReady = null; // Promise for xxhash initialization
-    this.h32ToString = null; // Will be set after initialization
+    this.h32 = null; // Hash function (will be set after initialization)
+    this.h32ToString = null; // Convert hash number to string (will be set after initialization)
   }
 
   /**
@@ -20,9 +21,10 @@ class TileHashService {
    */
   async initializeXxhash() {
     if (!this.xxhashReady) {
-      this.xxhashReady = xxhashWasm().then(({ h32ToString }) => {
-        this.h32ToString = h32ToString;
-        return h32ToString;
+      this.xxhashReady = xxhashWasm().then(({ h32, h32ToString }) => {
+        this.h32 = h32; // Hash function
+        this.h32ToString = h32ToString; // Convert hash number to string
+        return { h32, h32ToString };
       });
     }
     return this.xxhashReady;
@@ -123,8 +125,13 @@ class TileHashService {
         .raw()
         .toBuffer();
 
-      // Compute xxhash using WASM (convert Buffer to Uint8Array)
-      const hash = this.h32ToString(new Uint8Array(tileBuffer));
+      // Compute xxhash using WASM
+      // This version of xxhash-wasm expects a string input (it uses TextEncoder
+      // internally), so we convert the raw tile buffer to a binary string first.
+      const hashInput = tileBuffer.toString('binary');
+      const hashNumber = this.h32(hashInput);
+      // Convert hash number to string (h32ToString expects string input, so use toString instead)
+      const hash = hashNumber.toString(16); // Use hex representation
       return hash;
     } catch (error) {
       console.error(`Error computing hash for tile ${tileX},${tileY}:`, error);

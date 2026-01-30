@@ -164,3 +164,47 @@ frontend/js/
 │   ├── sessionModal.js (250 lines)
 │   ├── editSession.js (350 lines)
 │   └── utils.js (40 lines)
+
+1) User Authentication
+   └─> `authService` (signup/login, JWT)
+
+2) Session Setup
+   └─> Create/edit session (task + references)
+       └─> `sessionService` + repositories
+           └─> `referenceProcessingService`
+               (PDF/URL/Text → summaries + keywords → stored)
+
+3) Start Session
+   └─> `sessionService.startSession`
+       └─> `SessionMonitor.start`
+           ├─> `WindowMonitor.startMonitoring` (active app/window)
+           ├─> `ScreenMonitor.start` (adaptive screenshots)
+           └─> `SessionStatisticsRepository.initialize`
+
+4) Monitoring Loop (every few seconds)
+   ├─> `WindowMonitor.getActiveWindow`
+   ├─> `ScreenMonitor.getLastScreenshot`
+   ├─> `TileHashService.computeTileHashes` (change detection)
+   └─> `DistractionDetector.detectDistraction`
+        ├─> `SessionRulesService` (always allow/block)
+        ├─> `RuleService` (safety net blocklist)
+        ├─> `OCRService.ocrUrlBar` (if browser)
+        ├─> `TaskContextService.getTaskContext`
+        └─> `AIClassificationService.classifyContent` (via Ollama/OpenAI)
+
+5) State & Blocking
+   ├─> `MonitoringStateMachine.transitionTo` (GREEN/YELLOW/AMBIGUOUS/RED)
+   ├─> `OverlayService.show/hide` (block distracting zones when RED)
+   ├─> Activity log repository (events, distractions)
+   └─> `SessionStatisticsRepository.updateStats`
+
+6) Session End (stop / complete / pause)
+   └─> `sessionService` (stop/pause/complete)
+       └─> `SessionMonitor.stop/pause`
+           ├─> stop window/screen monitors
+           ├─> hide overlay
+           └─> finalize stats
+
+7) Review & Reports (future)
+   └─> Dashboard reads sessions + `session_statistics`
+       (activity reports, distraction frequency, focus analytics)

@@ -4,6 +4,10 @@ const fs = require('fs');
 
 class DatabaseConnection {
   constructor() {
+    // #region agent log
+    const logData = {location:'connection.js:6',message:'DatabaseConnection constructor entry',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'};
+    require('fs').appendFileSync('/Users/guljain/Desktop/Projects/FocusAI/.cursor/debug.log', JSON.stringify(logData) + '\n');
+    // #endregion
     // Create database directory
     const dbDir = path.join(__dirname, '../../data');
     if (!fs.existsSync(dbDir)) {
@@ -12,7 +16,23 @@ class DatabaseConnection {
 
     // Initialize database
     const dbPath = path.join(dbDir, 'focusai.db');
-    this.db = new Database(dbPath);
+    // #region agent log
+    const logData2 = {location:'connection.js:15',message:'Before Database instantiation',data:{dbPath},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'};
+    require('fs').appendFileSync('/Users/guljain/Desktop/Projects/FocusAI/.cursor/debug.log', JSON.stringify(logData2) + '\n');
+    // #endregion
+    try {
+      this.db = new Database(dbPath);
+      // #region agent log
+      const logData3 = {location:'connection.js:17',message:'Database instantiation succeeded',data:{dbExists:typeof this.db !== 'undefined'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'};
+      require('fs').appendFileSync('/Users/guljain/Desktop/Projects/FocusAI/.cursor/debug.log', JSON.stringify(logData3) + '\n');
+      // #endregion
+    } catch (error) {
+      // #region agent log
+      const logData4 = {location:'connection.js:20',message:'Database instantiation failed',data:{error:error.message,stack:error.stack},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'};
+      require('fs').appendFileSync('/Users/guljain/Desktop/Projects/FocusAI/.cursor/debug.log', JSON.stringify(logData4) + '\n');
+      // #endregion
+      throw error;
+    }
     this.db.pragma('foreign_keys = ON');
     
     console.log('✓ Database connected:', dbPath);

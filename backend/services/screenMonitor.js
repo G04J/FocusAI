@@ -41,11 +41,14 @@ class ScreenMonitor extends EventEmitter {
   updateFrequency(state) {
     const newFrequency = this.frequencies[state] || this.frequencies.GREEN;
     if (newFrequency !== this.currentFrequency) {
+      console.log(`[ScreenMonitor] State changed to ${state}, updating screenshot frequency from ${this.currentFrequency}ms to ${newFrequency}ms`);
       this.currentFrequency = newFrequency;
       // Restart timer with new frequency if monitoring
       if (this.screenshotTimer) {
         this.start(this.currentFrequency);
       }
+    } else {
+      console.log(`[ScreenMonitor] State changed to ${state}, frequency unchanged at ${this.currentFrequency}ms`);
     }
   }
 
@@ -74,29 +77,58 @@ class ScreenMonitor extends EventEmitter {
 
         while (retries >= 0) {
           try {
-            const sources = await desktopCapturer.getSources({ types: ['screen'] });
+            console.log(`[ScreenMonitor] 🔍 Attempting to capture screenshot (${2 - retries + 1}/3)...`);
+            
+            // Get screenshots with larger thumbnail size for better OCR
+            // Use screen dimensions or at least 1920x1080 for better quality
+            console.log(`[ScreenMonitor]   Calling desktopCapturer.getSources()...`);
+            const sources = await desktopCapturer.getSources({ 
+              types: ['screen'],
+              thumbnailSize: { width: 1920, height: 1080 } // Larger thumbnails for OCR
+            });
+            
+            console.log(`[ScreenMonitor]   Found ${sources?.length || 0} screen sources`);
+            
             if (!sources || sources.length === 0) {
               throw new Error('No screen sources available');
             }
 
             const primaryScreen = sources[0];
+            console.log(`[ScreenMonitor]   Using primary screen: ${primaryScreen.name || 'unknown'}`);
+            
             let imageBuffer = primaryScreen.thumbnail.toPNG();
+            console.log(`[ScreenMonitor]   Thumbnail converted to PNG: ${imageBuffer?.length || 0} bytes`);
 
-            // Downscale immediately (before any processing)
-            if (sharp) {
-              const metadata = await sharp(imageBuffer).metadata();
+            // Log original screenshot size
+            const originalMetadata = await sharp(imageBuffer).metadata();
+            console.log(`[ScreenMonitor] 📸 Screenshot captured: ${originalMetadata.width}x${originalMetadata.height}`);
+
+            // Downscale only if image is large enough (min 400px width for OCR)
+            if (sharp && originalMetadata.width > 400) {
+              const metadata = originalMetadata;
               const newWidth = Math.floor(metadata.width * this.downscaleFactor);
               const newHeight = Math.floor(metadata.height * this.downscaleFactor);
 
+              // Ensure minimum size for OCR (at least 300px width)
+              const minWidth = 300;
+              const finalWidth = Math.max(newWidth, minWidth);
+              const finalHeight = Math.floor((finalWidth / newWidth) * newHeight);
+
+              console.log(`[ScreenMonitor] 🔽 Downscaling: ${metadata.width}x${metadata.height} → ${finalWidth}x${finalHeight}`);
+
               imageBuffer = await sharp(imageBuffer)
-                .resize(newWidth, newHeight)
+                .resize(finalWidth, finalHeight)
                 .png()
                 .toBuffer();
+            } else {
+              console.log(`[ScreenMonitor] ⚠️ Screenshot too small (${originalMetadata.width}x${originalMetadata.height}), skipping downscale`);
             }
 
             // Update buffer
             this.lastScreenshot = imageBuffer;
             this.lastScreenshotTime = Date.now();
+            
+            console.log(`[ScreenMonitor] 💾 Screenshot stored: ${originalMetadata.width}x${originalMetadata.height}, buffer size: ${imageBuffer.length} bytes`);
 
             // Add to buffer (limit size)
             this.screenshotBuffer.push({
@@ -108,6 +140,7 @@ class ScreenMonitor extends EventEmitter {
             }
 
             // Emit event
+            console.log(`[ScreenMonitor] 📤 Emitting screenshot event`);
             this.emit('screenshot', imageBuffer);
 
             this.isCapturing = false;
@@ -124,27 +157,36 @@ class ScreenMonitor extends EventEmitter {
 
         // All retries failed, fallback to previous screenshot
         if (this.lastScreenshot) {
-          console.warn('Screenshot capture failed, using previous screenshot');
+          console.warn(`[ScreenMonitor] ⚠️ Screenshot capture failed after ${2 - retries} retries, using previous screenshot`);
+          console.warn(`[ScreenMonitor]   Last error: ${lastError?.message || 'Unknown error'}`);
           this.isCapturing = false;
           return this.lastScreenshot;
         }
 
+        console.error(`[ScreenMonitor] ❌ Screenshot capture failed completely, no previous screenshot available`);
+        console.error(`[ScreenMonitor]   Error: ${lastError?.message || 'Unknown error'}`);
         throw lastError;
       })();
 
-      return await Promise.race([capturePromise, timeoutPromise]);
+      const result = await Promise.race([capturePromise, timeoutPromise]);
+      return result;
     } catch (error) {
-      console.error('Error capturing screen:', error);
+      console.error(`[ScreenMonitor] ❌ Error capturing screen:`, error.message);
+      console.error(`[ScreenMonitor]   Error type: ${error.constructor.name}`);
+      console.error(`[ScreenMonitor]   Stack:`, error.stack);
       this.isCapturing = false;
 
       // Fallback to previous screenshot
       if (this.lastScreenshot) {
+        console.log(`[ScreenMonitor] 🔄 Using previous screenshot as fallback`);
         return this.lastScreenshot;
       }
 
       // Continue with reduced frequency if failures persist
       if (!this.lastScreenshot) {
+        const oldFreq = this.currentFrequency;
         this.currentFrequency = Math.min(this.currentFrequency * 2, 60000); // Max 1 minute
+        console.warn(`[ScreenMonitor] ⚠️ No screenshots available, reducing frequency: ${oldFreq}ms → ${this.currentFrequency}ms`);
       }
 
       throw error;
@@ -172,11 +214,33 @@ class ScreenMonitor extends EventEmitter {
       // Still capture, but less frequently
     }
 
+    console.log(`[ScreenMonitor] Starting screenshot capture every ${this.currentFrequency}ms (state: ${this.stateMachine ? this.stateMachine.getState() : 'UNKNOWN'})`);
+
+    // Capture initial screenshot immediately
+    console.log(`[ScreenMonitor] 📸 Capturing initial screenshot...`);
+    this.captureScreen().then(screenshot => {
+      if (screenshot) {
+        console.log(`[ScreenMonitor] ✅ Initial screenshot captured successfully`);
+      } else {
+        console.warn(`[ScreenMonitor] ⚠️ Initial screenshot capture returned null`);
+      }
+    }).catch(error => {
+      console.error(`[ScreenMonitor] ❌ Initial screenshot capture failed:`, error.message);
+    });
+
     this.screenshotTimer = setInterval(async () => {
       try {
-        await this.captureScreen();
+        console.log(`[ScreenMonitor] 📸 Screenshot timer triggered (interval: ${this.currentFrequency}ms)`);
+        const screenshot = await this.captureScreen();
+        if (screenshot) {
+          const metadata = await sharp(screenshot).metadata().catch(() => null);
+          console.log(`[ScreenMonitor] ✅ Screenshot captured successfully: ${metadata ? `${metadata.width}x${metadata.height}` : 'unknown size'}`);
+        } else {
+          console.warn(`[ScreenMonitor] ⚠️ Screenshot capture returned null/undefined`);
+        }
       } catch (error) {
-        console.error('Error in screenshot interval:', error);
+        console.error(`[ScreenMonitor] ❌ Error in screenshot interval:`, error.message);
+        console.error(`[ScreenMonitor]   Stack:`, error.stack);
       }
     }, this.currentFrequency);
   }
@@ -196,6 +260,15 @@ class ScreenMonitor extends EventEmitter {
    * @returns {Buffer|null} Last screenshot buffer
    */
   getLastScreenshot() {
+    const hasScreenshot = !!this.lastScreenshot;
+    const age = this.lastScreenshotTime ? Date.now() - this.lastScreenshotTime : null;
+    
+    if (!hasScreenshot) {
+      console.log(`[ScreenMonitor] 📭 getLastScreenshot() called: No screenshot available`);
+    } else {
+      console.log(`[ScreenMonitor] 📸 getLastScreenshot() called: Screenshot available (age: ${age ? `${Math.floor(age / 1000)}s` : 'unknown'})`);
+    }
+    
     return this.lastScreenshot;
   }
 

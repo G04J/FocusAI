@@ -32,10 +32,25 @@ class AIClassificationService {
    */
   async classifyContent(detectedContent, taskContext) {
     try {
+      // Log input content being classified
+      console.log(`[AIClassification] 🔍 Starting classification:`);
+      console.log(`[AIClassification]   Detected Content:`);
+      console.log(`[AIClassification]     - Domain: ${detectedContent.domain || 'N/A'}`);
+      console.log(`[AIClassification]     - URL: ${detectedContent.url || 'N/A'}`);
+      console.log(`[AIClassification]     - Window Title: ${detectedContent.windowTitle || 'N/A'}`);
+      console.log(`[AIClassification]     - OCR Text: ${(detectedContent.ocrText || '').substring(0, 100)}${(detectedContent.ocrText || '').length > 100 ? '...' : ''}`);
+      
+      console.log(`[AIClassification]   Task Context:`);
+      console.log(`[AIClassification]     - Task Name: ${taskContext.taskName || 'N/A'}`);
+      console.log(`[AIClassification]     - Task Description: ${(taskContext.taskDescription || 'N/A').substring(0, 100)}${(taskContext.taskDescription || '').length > 100 ? '...' : ''}`);
+      console.log(`[AIClassification]     - Keywords: ${(taskContext.keywords || []).slice(0, 10).join(', ')}${(taskContext.keywords || []).length > 10 ? '...' : ''}`);
+      
       // Check cache (5s TTL)
       const cacheKey = `${detectedContent.domain || ''}_${detectedContent.windowTitle || ''}`;
       const cached = this.decisionCache.get(cacheKey);
       if (cached && (Date.now() - cached.timestamp) < 5000) {
+        console.log(`[AIClassification] ✅ Using cached result (cache key: ${cacheKey})`);
+        console.log(`[AIClassification]   Result: isDistraction=${cached.result.isDistraction}, confidence=${cached.result.confidence}, reason="${cached.result.reason}"`);
         return cached.result;
       }
 
@@ -53,17 +68,44 @@ class AIClassificationService {
       }
 
       // Timeout wrapper
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('AI classification timeout')), this.config.timeout)
-      );
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => {
+          console.error(`[AIClassification] ⏰ TIMEOUT: Classification request exceeded ${this.config.timeout}ms timeout`);
+          reject(new Error(`AI classification timeout after ${this.config.timeout}ms`));
+        }, this.config.timeout);
+      });
 
       const classificationPromise = this.performClassification(detectedContent, taskContext);
 
-      const result = await Promise.race([classificationPromise, timeoutPromise]);
+      console.log(`[AIClassification] 📤 Sending classification request to ${this.config.provider} (model: ${this.config.model})...`);
+      console.log(`[AIClassification]   Timeout: ${this.config.timeout}ms`);
+      const startTime = Date.now();
+      
+      let result;
+      try {
+        result = await Promise.race([classificationPromise, timeoutPromise]);
+        const classificationTime = Date.now() - startTime;
+        console.log(`[AIClassification] ⏱️ Classification promise resolved (${classificationTime}ms)`);
+      } catch (error) {
+        const classificationTime = Date.now() - startTime;
+        console.error(`[AIClassification] ❌ Classification promise rejected after ${classificationTime}ms:`);
+        console.error(`[AIClassification]   Error: ${error.message}`);
+        console.error(`[AIClassification]   Stack: ${error.stack}`);
+        throw error;
+      }
+      
+      const classificationTime = Date.now() - startTime;
 
       // Reset circuit breaker on success
       this.circuitBreaker.failures = 0;
       this.circuitBreaker.isOpen = false;
+
+      // Log AI classification result
+      console.log(`[AIClassification] ✅ Classification complete (${classificationTime}ms):`);
+      console.log(`[AIClassification]   Result: isDistraction=${result.isDistraction}`);
+      console.log(`[AIClassification]   Confidence: ${result.confidence.toFixed(2)}`);
+      console.log(`[AIClassification]   Reason: "${result.reason}"`);
+      console.log(`[AIClassification]   Decision: ${result.isDistraction ? '🚫 DISTRACTION' : '✅ TASK-RELATED'}`);
 
       // Cache result
       this.decisionCache.set(cacheKey, {
@@ -73,7 +115,17 @@ class AIClassificationService {
 
       return result;
     } catch (error) {
-      console.error('AI classification error:', error);
+      console.error(`[AIClassification] ❌ AI classification error:`);
+      console.error(`[AIClassification]   Error message: ${error.message}`);
+      console.error(`[AIClassification]   Error type: ${error.constructor.name}`);
+      if (error.stack) {
+        console.error(`[AIClassification]   Stack trace:`, error.stack);
+      }
+      
+      // Check if it's a connection/timeout error
+      if (error.message.includes('timeout') || error.message.includes('ECONNREFUSED') || error.message.includes('fetch failed')) {
+        console.error(`[AIClassification] ⚠️ Connection issue detected - is Ollama running at ${this.config.baseURL}?`);
+      }
       
       // Increment circuit breaker failures
       this.circuitBreaker.failures++;
@@ -81,11 +133,13 @@ class AIClassificationService {
       
       if (this.circuitBreaker.failures >= this.circuitBreaker.threshold) {
         this.circuitBreaker.isOpen = true;
-        console.warn('Circuit breaker opened due to consecutive failures');
+        console.warn(`[AIClassification] 🔴 Circuit breaker opened due to ${this.circuitBreaker.failures} consecutive failures`);
       }
 
       // Fallback to default decision
-      return this.getDefaultDecision();
+      const defaultDecision = this.getDefaultDecision();
+      console.log(`[AIClassification] 🔄 Using default decision:`, defaultDecision);
+      return defaultDecision;
     }
   }
 
@@ -99,8 +153,13 @@ class AIClassificationService {
     let lastError;
     let retries = this.config.maxRetries;
 
+    console.log(`[AIClassification] 🔄 Starting classification with ${retries + 1} attempts...`);
+
     while (retries >= 0) {
+      const attemptNumber = this.config.maxRetries - retries + 1;
       try {
+        console.log(`[AIClassification]   Attempt ${attemptNumber}/${this.config.maxRetries + 1}...`);
+        
         if (this.config.provider === 'ollama') {
           return await this.classifyWithOllama(detectedContent, taskContext);
         } else if (this.config.provider === 'openai') {
@@ -110,14 +169,21 @@ class AIClassificationService {
         }
       } catch (error) {
         lastError = error;
+        console.error(`[AIClassification]   Attempt ${attemptNumber} failed: ${error.message}`);
+        
         retries--;
         if (retries >= 0) {
+          const backoffMs = 100 * (this.config.maxRetries - retries + 1);
+          console.log(`[AIClassification]   Retrying in ${backoffMs}ms... (${retries} attempts remaining)`);
           // Exponential backoff
-          await new Promise(resolve => setTimeout(resolve, 100 * (this.config.maxRetries - retries + 1)));
+          await new Promise(resolve => setTimeout(resolve, backoffMs));
+        } else {
+          console.error(`[AIClassification] ❌ All ${this.config.maxRetries + 1} attempts failed`);
         }
       }
     }
 
+    console.error(`[AIClassification] ❌ Classification failed after all retries. Last error:`, lastError?.message);
     throw lastError;
   }
 
@@ -130,30 +196,64 @@ class AIClassificationService {
   async classifyWithOllama(detectedContent, taskContext) {
     const prompt = this.buildPrompt(detectedContent, taskContext);
 
-    const response = await fetch(`${this.config.baseURL}/api/generate`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: this.config.model,
-        prompt: prompt,
-        stream: false,
-        options: {
-          temperature: 0.7,
-          max_tokens: 200
+    console.log(`[AIClassification] 🌐 Calling Ollama API: ${this.config.baseURL}/api/generate`);
+    const requestStartTime = Date.now();
+    
+    try {
+      // Quick connectivity check (optional, but helpful for debugging)
+      const testUrl = `${this.config.baseURL}/api/tags`;
+      try {
+        const testResponse = await fetch(testUrl, { method: 'GET', signal: AbortSignal.timeout(2000) }).catch(() => null);
+        if (!testResponse || !testResponse.ok) {
+          console.warn(`[AIClassification] ⚠️ Ollama connectivity check failed - Ollama may not be running at ${this.config.baseURL}`);
         }
-      })
-    });
+      } catch (testError) {
+        // Ignore connectivity check errors, proceed with request
+      }
+      
+      const response = await fetch(`${this.config.baseURL}/api/generate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: this.config.model,
+          prompt: prompt,
+          stream: false,
+          options: {
+            temperature: 0.7,
+            max_tokens: 200
+          }
+        })
+      });
 
-    if (!response.ok) {
-      throw new Error(`Ollama API error: ${response.statusText}`);
+      const requestTime = Date.now() - requestStartTime;
+      console.log(`[AIClassification] 📡 Fetch completed (${requestTime}ms), status: ${response.status} ${response.statusText}`);
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => 'Unable to read error response');
+        console.error(`[AIClassification] ❌ Ollama API error: ${response.status} ${response.statusText}`);
+        console.error(`[AIClassification]   Error details: ${errorText.substring(0, 200)}`);
+        throw new Error(`Ollama API error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const text = data.response || '';
+
+      console.log(`[AIClassification] 📥 Received response from Ollama (${text.length} chars)`);
+      console.log(`[AIClassification]   Raw response preview: ${text.substring(0, 150)}${text.length > 150 ? '...' : ''}`);
+      console.log(`[AIClassification]   Full response data keys:`, Object.keys(data));
+
+      const parsedResult = this.parseResponse(text);
+      console.log(`[AIClassification] 🔄 Parsed response:`, JSON.stringify(parsedResult, null, 2));
+
+      return parsedResult;
+    } catch (error) {
+      const requestTime = Date.now() - requestStartTime;
+      console.error(`[AIClassification] ❌ Error during Ollama API call (${requestTime}ms):`, error.message);
+      console.error(`[AIClassification]   Error stack:`, error.stack);
+      throw error;
     }
-
-    const data = await response.json();
-    const text = data.response || '';
-
-    return this.parseResponse(text);
   }
 
   /**
@@ -205,6 +305,8 @@ class AIClassificationService {
    * @returns {string} Prompt
    */
   buildPrompt(detectedContent, taskContext) {
+    console.log(`[AIClassification] 📝 Building classification prompt...`);
+    
     let prompt = `You are a focus assistant helping a user stay focused on their task.
 
 TASK: ${taskContext.taskName}
@@ -267,7 +369,11 @@ Respond with JSON format:
     // Truncate if too long (max 4000 tokens ≈ 3000 chars)
     if (prompt.length > 3000) {
       prompt = prompt.substring(0, 3000) + '...';
+      console.log(`[AIClassification] ⚠️ Prompt truncated to 3000 characters`);
     }
+
+    console.log(`[AIClassification] 📋 Prompt built (${prompt.length} chars)`);
+    console.log(`[AIClassification]   Prompt preview: ${prompt.substring(0, 200)}...`);
 
     return prompt;
   }
@@ -279,35 +385,45 @@ Respond with JSON format:
    */
   parseResponse(text) {
     try {
+      console.log(`[AIClassification] 🔧 Parsing AI response...`);
+      
       // Try to extract JSON from response
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
+        console.log(`[AIClassification]   Found JSON in response`);
         const parsed = JSON.parse(jsonMatch[0]);
-        return {
+        const result = {
           isDistraction: parsed.isDistraction === true || parsed.isDistraction === 'true',
           confidence: Math.max(0, Math.min(1, parseFloat(parsed.confidence) || 0.7)),
           reason: parsed.reason || 'AI classification'
         };
+        console.log(`[AIClassification]   Parsed JSON:`, JSON.stringify(result, null, 2));
+        return result;
       }
 
       // Fallback: try to infer from text
+      console.log(`[AIClassification]   No JSON found, inferring from text content`);
       const lowerText = text.toLowerCase();
       const isDistraction = lowerText.includes('yes') || lowerText.includes('distraction') || 
                            lowerText.includes('block') || lowerText.includes('blocked');
       
-      return {
+      const result = {
         isDistraction: isDistraction,
         confidence: 0.6,
         reason: 'AI classification (parsed from text)'
       };
+      console.log(`[AIClassification]   Inferred result:`, result);
+      return result;
     } catch (error) {
-      console.error('Error parsing AI response:', error);
+      console.error('[AIClassification] ❌ Error parsing AI response:', error);
       // Default to distraction if can't parse
-      return {
+      const fallbackResult = {
         isDistraction: true,
         confidence: 0.5,
         reason: 'AI classification failed, defaulting to distraction'
       };
+      console.log(`[AIClassification]   Using fallback result:`, fallbackResult);
+      return fallbackResult;
     }
   }
 

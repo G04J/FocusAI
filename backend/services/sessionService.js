@@ -105,10 +105,26 @@ class SessionService {
 
     if (result.success) {
       // Start monitoring if available
+      console.log(`[SessionService] Checking sessionMonitor availability:`, {
+        hasSessionMonitor: !!this.sessionMonitor,
+        sessionMonitorType: typeof this.sessionMonitor,
+        sessionId: sessionId
+      });
+      
       if (this.sessionMonitor) {
-        this.sessionMonitor.start(sessionId).catch(error => {
-          console.error('Error starting monitoring:', error);
-        });
+        console.log(`[SessionService] Starting monitoring for session ${sessionId}`);
+        this.sessionMonitor.start(sessionId)
+          .then(() => {
+            console.log(`[SessionService] ✅ Monitoring successfully started for session ${sessionId}`);
+          })
+          .catch(error => {
+            console.error(`[SessionService] ❌ Error starting monitoring for session ${sessionId}:`, error);
+            console.error(`[SessionService] Error stack:`, error.stack);
+            // Don't fail the session start, but log the error
+          });
+      } else {
+        console.warn(`[SessionService] ⚠️ sessionMonitor not available for session ${sessionId}`);
+        console.warn(`[SessionService] Monitoring will not be active for this session`);
       }
       
       return {
@@ -248,9 +264,26 @@ class SessionService {
       });
       
       if (result.success) {
-        // Resume monitoring if available
+        // Start or resume monitoring if available
         if (this.sessionMonitor) {
-          this.sessionMonitor.resume();
+          const monitorState = this.sessionMonitor.getState();
+          if (monitorState && monitorState.isMonitoring) {
+            console.log(`[SessionService] Resuming monitoring for session ${sessionId}`);
+            this.sessionMonitor.resume();
+          } else {
+            console.log(`[SessionService] Starting monitoring for resumed session ${sessionId}`);
+            this.sessionMonitor.start(sessionId)
+              .then(() => {
+                console.log(`[SessionService] ✅ Monitoring successfully started for resumed session ${sessionId}`);
+              })
+              .catch(error => {
+                console.error(`[SessionService] ❌ Error starting monitoring on resume:`, error);
+                console.error(`[SessionService] Error stack:`, error.stack);
+              });
+          }
+        } else {
+          console.warn(`[SessionService] ⚠️ sessionMonitor not available for session ${sessionId}`);
+          console.warn(`[SessionService] Monitoring will not be active for this session`);
         }
         
         return {
@@ -267,7 +300,24 @@ class SessionService {
       
       if (result.success) {
         if (this.sessionMonitor) {
-          this.sessionMonitor.resume();
+          const monitorState = this.sessionMonitor.getState();
+          if (monitorState && monitorState.isMonitoring) {
+            console.log(`[SessionService] Resuming monitoring for session ${sessionId} (fallback)`);
+            this.sessionMonitor.resume();
+          } else {
+            console.log(`[SessionService] Starting monitoring for resumed session ${sessionId} (fallback)`);
+            this.sessionMonitor.start(sessionId)
+              .then(() => {
+                console.log(`[SessionService] ✅ Monitoring successfully started for resumed session ${sessionId} (fallback)`);
+              })
+              .catch(error => {
+                console.error(`[SessionService] ❌ Error starting monitoring on resume (fallback):`, error);
+                console.error(`[SessionService] Error stack:`, error.stack);
+              });
+          }
+        } else {
+          console.warn(`[SessionService] ⚠️ sessionMonitor not available for session ${sessionId} (fallback)`);
+          console.warn(`[SessionService] Monitoring will not be active for this session`);
         }
         
         return {
@@ -371,6 +421,22 @@ class SessionService {
     });
 
     if (result.success) {
+      // Start monitoring if available
+      if (this.sessionMonitor) {
+        console.log(`[SessionService] Starting monitoring for restarted session ${sessionId}`);
+        this.sessionMonitor.start(sessionId)
+          .then(() => {
+            console.log(`[SessionService] ✅ Monitoring successfully started for restarted session ${sessionId}`);
+          })
+          .catch(error => {
+            console.error(`[SessionService] ❌ Error starting monitoring for restarted session ${sessionId}:`, error);
+            console.error(`[SessionService] Error stack:`, error.stack);
+          });
+      } else {
+        console.warn(`[SessionService] ⚠️ sessionMonitor not available for restarted session ${sessionId}`);
+        console.warn(`[SessionService] Monitoring will not be active for this session`);
+      }
+      
       return {
         success: true,
         message: 'Session restarted',

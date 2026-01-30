@@ -78,19 +78,31 @@ class OCRService {
             }
           }
 
-          // Downscale for better performance (50% size)
+          // Downscale for better performance, but ensure minimum size for OCR
           let metadata;
           let downscaledBuffer;
           try {
             metadata = await sharp(processedBuffer).metadata();
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/cd85e294-0bef-430a-902e-994341727018',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ocrService.js:75',message:'Before downscaling',data:{beforeDownscale:{width:metadata.width,height:metadata.height},targetSize:{width:Math.floor(metadata.width*0.5),height:Math.floor(metadata.height*0.5)}},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-            // #endregion
+            console.log(`[OCR] 📏 Image size before downscaling: ${metadata.width}x${metadata.height}`);
+            
+            // Only downscale if image is large enough (min 200px width for OCR)
+            const minWidth = 200;
+            let targetWidth, targetHeight;
+            
+            if (metadata.width > minWidth * 2) {
+              // Downscale to 50% but ensure minimum size
+              targetWidth = Math.max(Math.floor(metadata.width * 0.5), minWidth);
+              targetHeight = Math.floor((targetWidth / metadata.width) * metadata.height);
+              console.log(`[OCR] 🔽 Downscaling to: ${targetWidth}x${targetHeight}`);
+            } else {
+              // Image already small enough, use as-is
+              targetWidth = metadata.width;
+              targetHeight = metadata.height;
+              console.log(`[OCR] ✅ Image size acceptable (${targetWidth}x${targetHeight}), skipping downscale`);
+            }
+            
             downscaledBuffer = await sharp(processedBuffer)
-              .resize(
-                Math.floor(metadata.width * 0.5),
-                Math.floor(metadata.height * 0.5)
-              )
+              .resize(targetWidth, targetHeight)
               .png()
               .toBuffer();
             // #region agent log
@@ -237,14 +249,27 @@ class OCRService {
         // #endregion
       }
 
+      console.log(`[OCR] 📸 Extracting text from URL bar region (browser: ${browser})...`);
+      console.log(`[OCR]   Region: x=${region.x}, y=${region.y}, width=${region.width}, height=${region.height}`);
+      console.log(`[OCR]   Image size: ${width}x${height}`);
+      
+      // Warn if image is too small for OCR
+      if (region.width < 200 || region.height < 50) {
+        console.warn(`[OCR] ⚠️ Warning: URL bar region is very small (${region.width}x${region.height}), OCR may fail`);
+      }
+      
       const result = await this.ocr(imageBuffer, region);
       const elapsed = Date.now() - startTime;
-      console.log('[OCR] URL bar OCR completed', {
-        browser: browser,
-        elapsed: `${elapsed}ms`,
-        textLength: result.text?.length || 0,
-        confidence: result.confidence
-      });
+      
+      console.log(`[OCR] ✅ URL bar OCR completed (${elapsed}ms):`);
+      console.log(`[OCR]   Extracted text: "${result.text || ''}"`);
+      console.log(`[OCR]   Text length: ${result.text?.length || 0} chars`);
+      console.log(`[OCR]   Confidence: ${result.confidence?.toFixed(2) || 'N/A'}`);
+      
+      if (!result.text || result.text.length === 0) {
+        console.warn(`[OCR] ⚠️ No text extracted - this may be due to small image size or OCR failure`);
+      }
+      
       return result;
     } catch (error) {
       const elapsed = Date.now() - startTime;
@@ -466,13 +491,20 @@ class OCRService {
    */
   extractDomain(text) {
     try {
+      console.log(`[OCR] 🔍 Extracting domain from OCR text...`);
+      console.log(`[OCR]   Input text: "${text || ''}"`);
+      console.log(`[OCR]   Text length: ${text?.length || 0} chars`);
+      
       if (!text) {
+        console.log(`[OCR]   ⚠️ No text provided, returning empty result`);
         return { domain: null, url: null, confidence: 0.0 };
       }
 
       // Try to find URL in text
       const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+|[a-zA-Z0-9-]+\.[a-zA-Z]{2,})/gi;
       const matches = text.match(urlRegex);
+      
+      console.log(`[OCR]   Found ${matches?.length || 0} URL matches:`, matches || []);
 
       if (matches && matches.length > 0) {
         let url = matches[0];
@@ -485,6 +517,10 @@ class OCRService {
         try {
           const urlObj = new URL(url);
           const domain = urlObj.hostname.replace('www.', '');
+          console.log(`[OCR] ✅ Domain extracted successfully:`);
+          console.log(`[OCR]   Domain: ${domain}`);
+          console.log(`[OCR]   Full URL: ${urlObj.href}`);
+          console.log(`[OCR]   Confidence: 0.9`);
           return {
             domain: domain,
             url: urlObj.href,
@@ -493,11 +529,13 @@ class OCRService {
         } catch (e) {
           // Invalid URL, try to extract domain directly
           const domainMatch = matches[0].replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0];
-          console.warn('[OCR] Failed to parse URL, using domain match', {
+          console.warn('[OCR] ⚠️ Failed to parse URL, using domain match', {
             originalMatch: matches[0],
             extractedDomain: domainMatch,
             error: e.message
           });
+          console.log(`[OCR]   Extracted domain: ${domainMatch}`);
+          console.log(`[OCR]   Confidence: 0.7`);
           return {
             domain: domainMatch,
             url: matches[0],
@@ -507,6 +545,7 @@ class OCRService {
       }
 
       // No URL found
+      console.log(`[OCR] ⚠️ No URL found in OCR text`);
       return { domain: null, url: null, confidence: 0.0 };
     } catch (error) {
       console.error('[OCR] Error extracting domain from text', {
