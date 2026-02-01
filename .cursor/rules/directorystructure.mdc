@@ -1,0 +1,13 @@
+---
+name: directorystructure
+description: This is a new rule
+---
+- All of the rules in this file apply to new and already existing files, functions and lines of code. 
+
+- Make sure that the files in the folder do not exceed around 500 lines of code. Its not a hard deadline and can be ignored in cases where its impossible to divide the file further but I want to have my work clearly divided into files where possible (not in an unneccesary amound either) to maintain readability. 
+
+- the comfortable length of a file would be below 300 lines of code. 
+
+
+
+
