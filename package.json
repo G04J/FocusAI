@@ -1,0 +1,46 @@
+{
+  "name": "focusai",
+  "version": "1.0.0",
+  "description": "- An AI based focus and disciplane enforcing app.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "postinstall": "electron-rebuild -f -w better-sqlite3"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/__tests__/**/*.test.js",
+      "**/test/**/*.test.js"
+    ],
+    "collectCoverageFrom": [
+      "backend/**/*.js",
+      "!backend/test/**",
+      "!**/node_modules/**"
+    ]
+  },
+  "devDependencies": {
+    "electron": "^39.2.7",
+    "jest": "^29.7.0"
+  },
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "better-sqlite3": "^12.5.0",
+    "cheerio": "^1.1.2",
+    "electron-store": "^11.0.2",
+    "get-windows": "^9.2.3",
+    "jsonwebtoken": "^9.0.3",
+    "pdf-parse": "^2.4.5",
+    "screenshot-desktop": "^1.15.3",
+    "sharp": "^0.34.5",
+    "tesseract.js": "^7.0.0",
+    "xxhash-wasm": "^1.0.2"
+  }
+}

@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FocusAI - Dashboard</title>
+  <link rel="stylesheet" href="../css/global.css?v=2.1">
+  <link rel="stylesheet" href="../css/dashboard.css?v=2.1">
+  <link rel="stylesheet" href="../css/session-modal.css?v=2.1">
+</head>
+<body>
+  <div class="dashboard-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h2>FocusAI</h2>
+      </div>
+      
+      <nav class="sidebar-nav">
+        <a href="#" class="nav-item active" data-page="dashboard">
+          <span class="nav-icon">D</span>
+          <span>Dashboard</span>
+        </a>
+        <a href="#" class="nav-item" data-page="sessions">
+          <span class="nav-icon">S</span>
+          <span>Sessions</span>
+        </a>
+        <a href="#" class="nav-item" data-page="settings">
+          <span class="nav-icon">C</span>
+          <span>Settings</span>
+        </a>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <div class="user-info">
+          <div class="user-avatar"></div>
+          <div class="user-details">
+            <div class="user-name" id="user-name">User</div>
+            <div class="user-email" id="user-email">user@example.com</div>
+          </div>
+        </div>
+        <button id="logout-btn" class="btn-logout">Logout</button>
+      </div>
+    </aside>
+    
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Alert -->
+      <div id="dashboard-alert" class="alert"></div>
+      
+      <!-- Dashboard Page -->
+      <div id="page-dashboard" class="page active">
+        <div class="content-header">
+          <h1>Dashboard</h1>
+          <p>Track your focus sessions and productivity</p>
+        </div>
+        
+        <!-- Stats Grid -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon">Sessions</div>
+            <div class="stat-value" id="stat-total-sessions">0</div>
+            <div class="stat-label">Total Sessions</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">Time</div>
+            <div class="stat-value" id="stat-focus-time">0h</div>
+            <div class="stat-label">Focus Time</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">Completed</div>
+            <div class="stat-value" id="stat-completed">0</div>
+            <div class="stat-label">Completed</div>
+          </div>
+        </div>
+        
+        <!-- Active Session Container -->
+        <div id="active-session-container" class="active-session-card hidden">
+          <div class="active-session-header">
+            <div>
+              <span class="session-status-live">LIVE</span>
+            </div>
+            <div class="active-session-header-actions">
+              <button id="pause-session-btn" class="btn btn-secondary">Pause</button>
+              <button id="stop-session-btn" class="btn btn-primary">Stop</button>
+              <button id="collapse-session-btn" class="btn-collapse">▼</button>
+            </div>
+          </div>
+          
+          <div class="active-session-content">
+            <h3 id="active-task-name">Task Name</h3>
+            <p id="active-task-description">Task Description</p>
+            
+            <div class="session-timers">
+              <div class="timer-box">
+                <div class="timer-label">Elapsed</div>
+                <div class="timer-value" id="session-elapsed">00:00:00</div>
+              </div>
+              <div class="timer-divider">/</div>
+              <div class="timer-box">
+                <div class="timer-label">Remaining</div>
+                <div class="timer-value" id="session-remaining">00:00:00</div>
+              </div>
+            </div>
+            
+            <div class="session-progress-bar">
+              <div class="session-progress-fill" id="session-progress" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Recent Sessions -->
+        <div class="recent-sessions">
+          <div class="section-header">
+            <h2>Recent Sessions</h2>
+          </div>
+          <div id="recent-sessions-list" class="sessions-list">
+            <!-- Sessions will be loaded here -->
+          </div>
+        </div>
+      </div>
+      
+      <!-- Sessions Page -->
+      <div id="page-sessions" class="page">
+        <div class="content-header">
+          <h1>All Sessions</h1>
+          <p>Manage and track all your focus sessions</p>
+        </div>
+        
+        <!-- Session Filters -->
+        <div class="session-filters">
+          <button class="filter-btn active" data-filter="all">All</button>
+          <button class="filter-btn" data-filter="planned">Planned</button>
+          <button class="filter-btn" data-filter="active">Active</button>
+          <button class="filter-btn" data-filter="paused">Paused</button>
+          <button class="filter-btn" data-filter="completed">Completed</button>
+          <button class="filter-btn" data-filter="stopped">Stopped</button>
+        </div>
+        
+        <!-- Sessions List -->
+        <div id="all-sessions-list" class="sessions-list">
+          <!-- Sessions will be loaded here -->
+        </div>
+      </div>
+      
+      <!-- Settings Page -->
+      <div id="page-settings" class="page">
+        <div class="content-header">
+          <h1>Settings</h1>
+          <p>Manage your application preferences</p>
+        </div>
+        
+        <div class="settings-container">
+          <!-- Appearance Section -->
+          <div class="settings-section">
+            <div class="settings-section-header">
+              <h2>Appearance</h2>
+              <p>Customize the look and feel of the application</p>
+            </div>
+            
+            <div class="settings-item">
+              <div class="settings-item-content">
+                <div class="settings-item-info">
+                  <h3>Theme</h3>
+                  <p>Choose between light and dark mode</p>
+                </div>
+                <div class="settings-item-control">
+                  <label class="theme-switch">
+                    <input type="checkbox" id="settings-theme-toggle">
+                    <span class="theme-switch-slider"></span>
+                    <span class="theme-switch-label-light">Light</span>
+                    <span class="theme-switch-label-dark">Dark</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Create Session Button -->
+      <button id="create-session-btn" class="btn btn-primary btn-fab" title="Create New Session">
+        +
+      </button>
+    </main>
+  </div>
+  
+  <!-- Create Session Modal -->
+  <div id="session-modal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Create New Session</h2>
+        <button id="close-modal" class="modal-close">×</button>
+      </div>
+      
+      <form id="create-session-form" class="modal-body">
+        <div class="form-group">
+          <label for="task-name">Task Name *</label>
+          <input type="text" id="task-name" required>
+        </div>
+        
+        <div class="form-group">
+          <label for="task-description">Task Description <span class="optional">(optional)</span></label>
+          <textarea id="task-description" rows="3"></textarea>
+        </div>
+        
+        <div class="form-group">
+          <label for="duration">Duration *</label>
+          <div class="duration-input-wrapper">
+            <input type="number" id="duration" min="1" max="480" value="25" required>
+            <span class="duration-unit">minutes</span>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label class="reference-section-label">Reference Materials <span class="optional">(optional)</span></label>
+          <div class="reference-section">
+            <div class="reference-type-selector">
+              <button type="button" class="reference-type-btn-multi" data-type="url">
+                <span class="icon">URL</span>
+                <span>URLs</span>
+              </button>
+              <button type="button" class="reference-type-btn-multi" data-type="file">
+                <span class="icon">File</span>
+                <span>Files</span>
+              </button>
+              <button type="button" class="reference-type-btn-multi" data-type="text">
+                <span class="icon">Text</span>
+                <span>Text</span>
+              </button>
+            </div>
+            
+            <!-- URLs Section -->
+            <div id="urls-section" class="reference-group">
+              <div class="reference-group-header">
+                <h4>URLs</h4>
+                <span class="collapse-icon">▼</span>
+              </div>
+              <div class="reference-group-content">
+                <div class="reference-input-group">
+                  <div class="url-input-wrapper">
+                    <input type="url" id="reference-url-input" placeholder="Enter URL">
+                    <button type="button" id="add-url-btn" class="btn-add">Add</button>
+                  </div>
+                  <div id="urls-list" class="urls-list"></div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Files Section -->
+            <div id="files-section" class="reference-group">
+              <div class="reference-group-header">
+                <h4>Files</h4>
+                <span class="collapse-icon">▼</span>
+              </div>
+              <div class="reference-group-content">
+                <div class="reference-input-group">
+                  <label for="reference-file" id="file-upload-label" class="file-upload-label">
+                    <span class="upload-icon">Upload</span>
+                    <span class="upload-text">Click to upload files</span>
+                    <span class="upload-hint">Max 50MB per file</span>
+                  </label>
+                  <input type="file" id="reference-file" class="file-upload-input" multiple>
+                  <div id="files-list" class="files-list"></div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Text Section -->
+            <div id="text-section" class="reference-group">
+              <div class="reference-group-header">
+                <h4>Text Notes</h4>
+                <span class="collapse-icon">▼</span>
+              </div>
+              <div class="reference-group-content">
+                <div class="reference-input-group">
+                  <textarea id="reference-text" rows="5" placeholder="Enter reference text or notes..."></textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="modal-footer">
+          <button type="button" id="cancel-session-btn" class="btn btn-cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary">
+            Create Session
+            <span class="spinner hidden" id="create-spinner"></span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+  
+  <!-- View Session Modal -->
+  <div id="view-session-modal" class="modal-overlay">
+    <div class="modal" style="max-width: 800px;">
+      <div class="modal-header">
+        <h2>Session Details</h2>
+        <button id="close-view-modal" class="modal-close">×</button>
+      </div>
+      
+      <div class="modal-body">
+        <!-- Status Banner -->
+        <div id="session-status-banner" class="session-status-banner planned">
+          <div class="status-info">
+            <span id="view-status-badge" class="status-badge-large">PLANNED</span>
+            <div class="status-details">
+              <div id="view-status-message">This session is ready to start</div>
+              <div id="view-time-info" class="hidden"></div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Edit Form -->
+        <form id="edit-session-form">
+          <input type="hidden" id="edit-session-id">
+          
+          <div class="form-group">
+            <label for="edit-task-name">Task Name</label>
+            <input type="text" id="edit-task-name" readonly>
+          </div>
+          
+          <div class="form-group">
+            <label for="edit-task-description">Task Description</label>
+            <textarea id="edit-task-description" rows="3" readonly></textarea>
+          </div>
+          
+          <div class="form-group">
+            <label for="edit-duration">Duration</label>
+            <div class="duration-input-wrapper">
+              <input type="number" id="edit-duration" min="1" max="480" readonly>
+              <span class="duration-unit">minutes</span>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label>Reference Materials</label>
+            <div id="edit-reference-display" class="reference-display">
+              <!-- Reference materials will be displayed here -->
+            </div>
+          </div>
+          
+          <!-- Edit Reference Section (hidden by default) -->
+          <div id="edit-reference-section" class="edit-reference-section hidden">
+            <div class="reference-type-selector">
+              <button type="button" class="reference-type-btn-edit" data-type="url">
+                <span class="icon">URL</span>
+                <span>URLs</span>
+              </button>
+              <button type="button" class="reference-type-btn-edit" data-type="file">
+                <span class="icon">File</span>
+                <span>Files</span>
+              </button>
+              <button type="button" class="reference-type-btn-edit" data-type="text">
+                <span class="icon">Text</span>
+                <span>Text</span>
+              </button>
+            </div>
+            
+            <div id="edit-ref-url-group" class="reference-input-group hidden">
+              <div class="reference-group-header">
+                <h4>URLs</h4>
+                <span class="collapse-icon">▼</span>
+              </div>
+              <div class="reference-group-content">
+                <div class="url-input-wrapper">
+                  <input type="url" id="edit-reference-url-input" placeholder="Enter URL">
+                  <button type="button" id="edit-add-url-btn" class="btn-add">Add</button>
+                </div>
+                <div id="edit-urls-list" class="urls-list"></div>
+              </div>
+            </div>
+            
+            <div id="edit-ref-file-group" class="reference-input-group hidden">
+              <div class="reference-group-header">
+                <h4>Files</h4>
+                <span class="collapse-icon">▼</span>
+              </div>
+              <div class="reference-group-content">
+                <label for="edit-reference-file" id="edit-file-upload-label" class="file-upload-label">
+                  <span class="upload-icon">Upload</span>
+                  <span class="upload-text">Click to upload files</span>
+                  <span class="upload-hint">Max 50MB per file</span>
+                </label>
+                <input type="file" id="edit-reference-file" class="file-upload-input" multiple>
+                <div id="edit-files-list" class="files-list"></div>
+              </div>
+            </div>
+            
+            <div id="edit-ref-text-group" class="reference-input-group hidden">
+              <div class="reference-group-header">
+                <h4>Text Notes</h4>
+                <span class="collapse-icon">▼</span>
+              </div>
+              <div class="reference-group-content">
+                <textarea id="edit-reference-text" rows="5" placeholder="Enter reference text or notes..."></textarea>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Session Metadata -->
+          <div class="session-metadata">
+            <div class="metadata-item">
+              <span class="metadata-label">Created At</span>
+              <span id="view-created-at">-</span>
+            </div>
+            <div id="view-started-container" class="metadata-item hidden">
+              <span class="metadata-label">Started At</span>
+              <span id="view-started-at">-</span>
+            </div>
+            <div id="view-ended-container" class="metadata-item hidden">
+              <span class="metadata-label">Ended At</span>
+              <span id="view-ended-at">-</span>
+            </div>
+          </div>
+        </form>
+        
+        <!-- Action Buttons -->
+        <div id="view-action-buttons" style="display: flex; gap: 12px; margin-top: 24px;">
+          <!-- Buttons will be dynamically inserted here -->
+        </div>
+      </div>
+      
+      <div class="modal-footer">
+        <div class="modal-footer-left">
+          <button type="button" id="edit-toggle-btn" class="btn btn-secondary">Edit</button>
+          <button type="button" id="save-edit-btn" class="btn btn-primary hidden">
+            Save Changes
+            <span class="spinner hidden" id="edit-spinner"></span>
+          </button>
+        </div>
+        <div class="modal-footer-right">
+          <button type="button" id="cancel-view-btn" class="btn btn-cancel">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script type="module" src="../js/dashboard.js?v=2.1"></script>
+</body>
+</html>
