@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 # The general idea 
 
 - An AI based focus and disciplane enforcing app. 
