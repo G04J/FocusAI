@@ -2,29 +2,35 @@
 
 **An AI-powered desktop app that enforces focus by monitoring your screen and blocking distractions during focus sessions.**
 
-You define a task and duration, start a session, and the app captures the screen, detects off-task content (via OCR and optional AI), and can blur or block distracting regions in real time. All data is stored locally.
+FocusAI addresses the problem of staying on task when working on a computer. Instead of blocking apps at the system level (which is complex and brittle), it runs a focus session: you set a task and optional reference material (URLs, files, or notes), and the app captures the screen periodically, analyzes what is visible (using OCR and optional AI), and overlays or blurs regions it classifies as distracting. A state machine (e.g. green / yellow / red) decides when to show the overlay. Everything runs locally; user data and session history stay on your machine.
 
 ---
 
 ## What It Does
 
-- **Focus sessions**: Create sessions with task name, description, duration, and reference material (URLs, uploaded files, or text).
-- **Screen monitoring**: Periodic screenshots with **tile-based change detection** (hashing) to skip unchanged regions and keep analysis fast.
-- **Distraction detection**: Rule-based allow/block lists, **OCR** (e.g. browser URL bar), and optional **AI classification** (Ollama/OpenAI) to decide if content is on-task or distracting.
-- **Blocking**: **Overlay** (translucent/blur) over distracting zones instead of system-level app blocking; **state machine** (e.g. GREEN / YELLOW / RED) drives when to show or hide the overlay.
-- **Dashboard**: Stats (total sessions, focus time, completed), active session card with timer, recent sessions, and filters (planned / active / paused / completed).
-- **Auth & data**: Signup/login, **JWT** auth, **bcrypt** password hashing, and **SQLite** (Better-SQLite3) for users, sessions, references, rules, and activity.
+- **Focus sessions**: Task name, description, duration, and reference material (URLs, uploaded files, or text). Sessions can be planned, active, paused, stopped, or completed.
+- **Screen monitoring**: Periodic screenshots with tile-based change detection (hashing) so only changed regions are analyzed.
+- **Distraction detection**: Rule-based allow/block lists, OCR (e.g. browser URL bar), and optional AI classification (Ollama or OpenAI-compatible API) to label content as on-task or distracting.
+- **Blocking**: Translucent overlay over distracting zones; state machine controls when the overlay is shown or hidden.
+- **Dashboard**: Session stats (total sessions, focus time, completed count), active session card with timer, recent sessions, and filters by status.
+- **Auth and storage**: Signup/login with token-based auth and local SQLite for users, sessions, references, rules, and activity.
 
 ---
 
-## Architecture & Design
+## Architecture and Design
 
-- **Electron**: Main process handles window lifecycle, **IPC** for frontend-backend communication; **preload** script exposes a minimal, secure API (context isolation, node integration off).
-- **Layered backend**: **Repository pattern** (e.g. `userRepository`, `sessionRepository`, `sessionStatisticsRepository`) for data access; **service layer** (auth, session, monitoring, overlay, OCR, AI, rules) for business logic; **validators** shared across frontend and backend.
-- **Modular frontend**: Vanilla JS with **ES6 modules** (auth, stats, activeSession, sessionsList, createSession, editSession, sessionModal, theme, utils); single-responsibility modules, no framework.
-- **Security**: Passwords hashed with bcrypt; JWT for auth; input validation on both client and server; file upload checks (size, type); user data stays local.
+- **Electron**: Main process owns windows and IPC; a preload script exposes a minimal API to the renderer (context isolation, node integration disabled).
+- **Backend**: Repository layer for data access; service layer for business logic; shared validators. No ORM; direct SQLite via Better-SQLite3.
+- **Frontend**: Vanilla JS with ES6 modules (auth, stats, sessions, theme, utils), one concern per module, no framework.
+- **Security**: Hashed passwords, stateless token auth, validation on client and server, file upload checks, local-only data.
 
-Detailed rationale for stack and patterns is in **[docs/choices.md](docs/choices.md)**; implementation phases and status in **[docs/plan.md](docs/plan.md)** and **[docs/current.md](docs/current.md)**.
+Rationale for stack and patterns: **[docs/choices.md](docs/choices.md)**. Phases and status: **[docs/plan.md](docs/plan.md)**, **[docs/current.md](docs/current.md)**.
+
+---
+
+## How It Works
+
+When you start a focus session, the app begins capturing the screen at intervals. Each frame is split into tiles and hashed; only tiles whose content changed since the last run are sent for analysis. That keeps processing fast. For each changed region, the pipeline checks your session rules (always allowed or blocked URLs/apps), then runs OCR on text (e.g. the browser URL bar) and optionally sends content to an AI classifier (Ollama or OpenAI-compatible) to decide if it matches your task or counts as a distraction. The result drives a small state machine (e.g. green for on-task, yellow for unclear, red for distraction). When the state is red, the overlay is shown over the distracting zone; when it returns to green, the overlay is hidden. Session stats and activity are written to the local database so you can review focus time and distraction events later.
 
 ---
 
@@ -32,25 +38,13 @@ Detailed rationale for stack and patterns is in **[docs/choices.md](docs/choices
 
 | Area | Technologies |
 |------|--------------|
-| **Desktop** | Electron |
-| **Backend** | Node.js, Better-SQLite3 |
-| **Auth** | JWT (jsonwebtoken), bcrypt |
-| **Frontend** | Vanilla JavaScript (ES6 modules), HTML, CSS |
-| **Screen & media** | screenshot-desktop, Sharp, Tesseract.js (OCR) |
-| **AI (optional)** | Ollama, OpenAI-compatible API |
-| **Testing** | Jest (unit + integration) |
-
----
-
-## Skills This Project Demonstrates
-
-- **Full-stack**: Electron app with Node backend and HTML/CSS/JS frontend.
-- **Databases**: SQLite schema design, repository pattern, CRUD, and session/activity storage.
-- **Auth & security**: JWT, bcrypt, validation, and secure IPC/preload in Electron.
-- **Architecture**: Clear separation of data (repositories), business logic (services), and UI; state machine for monitoring/blocking flow.
-- **Integrations**: Screen capture, OCR (Tesseract), image processing (Sharp), optional LLM (Ollama/OpenAI).
-- **Testing**: Jest for services, repositories, and integration flows (see `backend/test/`).
-- **Documentation**: In-repo docs for architecture, plan, current status, and folder structure (`docs/`).
+| Desktop | Electron |
+| Backend | Node.js, Better-SQLite3 |
+| Auth | JWT (jsonwebtoken), bcrypt |
+| Frontend | Vanilla JavaScript (ES6 modules), HTML, CSS |
+| Screen and media | screenshot-desktop, Sharp, Tesseract.js |
+| AI (optional) | Ollama, OpenAI-compatible API |
+| Testing | Jest (unit and integration) |
 
 ---
 
@@ -61,19 +55,17 @@ FocusAI/
 ├── main.js                 # Electron main: windows, IPC, service wiring
 ├── preload.js              # Secure IPC bridge for renderer
 ├── frontend/
-│   ├── pages/              # auth.html, dashboard.html
-│   ├── js/                 # dashboard.js + modules/ (auth, stats, sessions, theme, utils)
-│   └── css/                # global, auth, dashboard, session-modal
+│   ├── pages/              # auth, dashboard
+│   ├── js/                 # dashboard entry + modules
+│   └── css/
 ├── backend/
-│   ├── database/           # connection.js, repositories/ (user, session, rules, stats, activity, reference)
-│   ├── services/           # auth, session, screenMonitor, windowMonitor, sessionMonitor,
-│   │                        # overlayService, ocrService, aiClassificationService, distractionDetector,
-│   │                        # tileHashService, ruleService, sessionRulesService, taskContextService, etc.
-│   ├── overlay/            # Overlay UI (e.g. blur)
-│   ├── scripts/            # Helpers (e.g. macOS OCR)
-│   └── test/               # Jest tests (unit + integration)
+│   ├── database/          # connection, repositories
+│   ├── services/           # auth, session, monitoring, overlay, OCR, AI, rules
+│   ├── overlay/            # Overlay UI
+│   ├── scripts/            # Platform helpers (e.g. macOS OCR)
+│   └── test/               # Jest tests
 ├── docs/                   # explain, plan, current, choices, folderStructure
-└── data/                  # SQLite DB, uploads (gitignored)
+└── data/                   # SQLite DB, uploads (gitignored)
 ```
 
 ---
@@ -89,7 +81,7 @@ npm install
 npm start
 ```
 
-For **AI-based distraction classification**, run [Ollama](https://ollama.ai) locally (or configure an OpenAI-compatible endpoint) as used by the app.
+For AI-based distraction classification, run [Ollama](https://ollama.ai) locally or point the app at an OpenAI-compatible endpoint.
 
 ---
 
@@ -106,10 +98,10 @@ For **AI-based distraction classification**, run [Ollama](https://ollama.ai) loc
 
 ## Documentation
 
-- **[docs/explain.md](docs/explain.md)**: File-by-file explanation of modules.
+- **[docs/explain.md](docs/explain.md)**: File-by-file module overview.
 - **[docs/plan.md](docs/plan.md)**: Implementation phases and roadmap.
-- **[docs/current.md](docs/current.md)**: Current status and completed vs in-progress features.
-- **[docs/choices.md](docs/choices.md)**: Architectural and technology choices and rationale.
+- **[docs/current.md](docs/current.md)**: Current status and completed vs in-progress work.
+- **[docs/choices.md](docs/choices.md)**: Architectural and technology choices.
 - **[docs/folderStructure.md](docs/folderStructure.md)**: Folder structure reference.
 
 ---
